@@ -36,6 +36,7 @@ interface SidebarContainerProps {
   onApplyTemplate: (template: TemplateDefinition, mode: 'replace' | 'append') => void;
   onPreviewTemplate: (template: TemplateDefinition) => void;
   onOpenTemplatesModal?: () => void;
+  onOpenSEOModal?: () => void;
   onAddSection: (section: CanvasSection) => void;
   onAddElement: (element: CanvasElement) => void;
   selectedSectionId: string | null;
@@ -59,6 +60,7 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
   onApplyTemplate,
   onPreviewTemplate,
   onOpenTemplatesModal,
+  onOpenSEOModal,
   onAddSection,
   onAddElement,
   selectedSectionId,
@@ -187,7 +189,11 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
               <ThemeTab currentTheme={project.theme} onUpdateTheme={onUpdateTheme} />
             )}
             {activeTab === 'settings' && (
-              <SettingsTab project={project} setProject={setProject} />
+              <SettingsTab
+                project={project}
+                setProject={setProject}
+                onOpenSEOModal={onOpenSEOModal}
+              />
             )}
           </div>
         </aside>

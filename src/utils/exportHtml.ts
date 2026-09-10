@@ -1,7 +1,19 @@
 import { WebsiteProject, CanvasSection, CanvasElement } from '../types';
+import { generateSchemaJsonLd } from '../services/seoService';
 
 export function generateStandaloneHtml(project: WebsiteProject): string {
   const { theme, sections, settings } = project;
+
+  const siteTitle = settings.title || project.name || 'Website của tôi';
+  const siteDesc = settings.metaDescription || project.description || 'Trang web được thiết kế chuyên nghiệp với WebStudio';
+  const canonicalUrl = settings.canonicalUrl || 'https://mywebsite.com';
+  const ogImage = settings.ogImage || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200';
+  const ogType = settings.ogType || 'website';
+  const twitterCard = settings.twitterCard || 'summary_large_image';
+  const language = settings.language || 'vi';
+  const robotsDirective = `${settings.robotsIndex !== false ? 'index' : 'noindex'}, ${settings.robotsFollow !== false ? 'follow' : 'nofollow'}`;
+  const keywords = settings.keywords || '';
+  const schemaJson = generateSchemaJsonLd(project);
 
   const sectionsHtml = sections
     .filter((s) => !s.hidden)
@@ -9,12 +21,44 @@ export function generateStandaloneHtml(project: WebsiteProject): string {
     .join('\n\n');
 
   return `<!DOCTYPE html>
-<html lang="vi">
+<html lang="${language}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(settings.title || project.name)}</title>
-  <meta name="description" content="${escapeHtml(settings.metaDescription || project.description)}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>${escapeHtml(siteTitle)}</title>
+  <meta name="description" content="${escapeHtml(siteDesc)}">
+  ${keywords ? `<meta name="keywords" content="${escapeHtml(keywords)}">` : ''}
+  <meta name="robots" content="${robotsDirective}">
+  ${settings.author ? `<meta name="author" content="${escapeHtml(settings.author)}">` : ''}
+  
+  <!-- Canonical URL for Google Indexing -->
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
+  
+  ${settings.googleSiteVerification ? `<!-- Google Search Console Verification -->\n  <meta name="google-site-verification" content="${escapeHtml(settings.googleSiteVerification)}">` : ''}
+  ${settings.bingSiteVerification ? `<!-- Bing Webmaster Verification -->\n  <meta name="msvalidate.01" content="${escapeHtml(settings.bingSiteVerification)}">` : ''}
+
+  <!-- Open Graph / Facebook / Zalo -->
+  <meta property="og:type" content="${escapeHtml(ogType)}">
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
+  <meta property="og:title" content="${escapeHtml(siteTitle)}">
+  <meta property="og:description" content="${escapeHtml(siteDesc)}">
+  <meta property="og:image" content="${escapeHtml(ogImage)}">
+  <meta property="og:site_name" content="${escapeHtml(settings.businessName || siteTitle)}">
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="${escapeHtml(twitterCard)}">
+  <meta name="twitter:url" content="${escapeHtml(canonicalUrl)}">
+  <meta name="twitter:title" content="${escapeHtml(siteTitle)}">
+  <meta name="twitter:description" content="${escapeHtml(siteDesc)}">
+  <meta name="twitter:image" content="${escapeHtml(ogImage)}">
+  ${settings.twitterHandle ? `<meta name="twitter:creator" content="${escapeHtml(settings.twitterHandle)}">` : ''}
+
+  ${settings.faviconUrl ? `<link rel="icon" type="image/x-icon" href="${escapeHtml(settings.faviconUrl)}">` : ''}
+
+  <!-- Google Structured Data (Schema.org JSON-LD for Rich Snippets) -->
+  <script type="application/ld+json">
+${schemaJson}
+  </script>
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,6 +130,7 @@ ${sectionsHtml}
       });
     });
   </script>
+  ${settings.customJs ? `<script>\n${settings.customJs}\n</script>` : ''}
 </body>
 </html>`;
 }
@@ -99,78 +144,78 @@ function renderSectionHtml(section: CanvasSection, theme: any): string {
 
   const elementsHtml = section.elements.map((el) => renderElementHtml(el, theme)).join('\n');
 
-  return `  <!-- Section: ${escapeHtml(section.name)} -->
-  <section class="w-full relative overflow-hidden" style="background-color: ${bg}; padding-top: ${pt}px; padding-bottom: ${pb}px; ${br} ${bw}">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      ${elementsHtml}
-    </div>
-  </section>`;
+  let layoutClass = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8';
+  if (section.layout === 'full-width') layoutClass = 'w-full px-4';
+  if (section.layout === 'split-2') layoutClass = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8 items-center';
+  if (section.layout === 'grid-3') layoutClass = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-3 gap-6';
+  if (section.layout === 'grid-4') layoutClass = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6';
+
+  const sectionTag = section.category === 'header' ? 'header' : section.category === 'footer' ? 'footer' : 'section';
+
+  return `<${sectionTag} id="${section.id}" class="relative transition-all" style="background-color: ${bg}; padding-top: ${pt}px; padding-bottom: ${pb}px; ${br} ${bw}">
+  <div class="${layoutClass}">
+${elementsHtml}
+  </div>
+</${sectionTag}>`;
 }
 
 function renderElementHtml(el: CanvasElement, theme: any): string {
-  const styles = el.styles || {};
-  const textAlign = styles.textAlign || 'left';
-  const textColor = styles.textColor || 'inherit';
+  const align = el.styles.textAlign ? `text-${el.styles.textAlign}` : '';
+  const textColor = el.styles.textColor ? `color: ${el.styles.textColor};` : '';
+  const fontSize = el.styles.fontSize ? `font-size: ${el.styles.fontSize};` : '';
+  const fontWeight = el.styles.fontWeight ? `font-weight: ${el.styles.fontWeight};` : '';
+  const customStyle = `${textColor} ${fontSize} ${fontWeight}`;
 
   switch (el.type) {
     case 'heading': {
-      const Tag = el.tag || 'h2';
-      const sizeClass =
-        styles.fontSize === '5xl'
-          ? 'text-4xl md:text-5xl lg:text-6xl leading-tight'
-          : styles.fontSize === '4xl'
-          ? 'text-3xl md:text-4xl lg:text-5xl leading-tight'
-          : styles.fontSize === '3xl'
-          ? 'text-2xl md:text-3xl lg:text-4xl'
-          : styles.fontSize === 'xl'
-          ? 'text-xl md:text-2xl'
-          : 'text-2xl md:text-3xl';
-      return `<${Tag} class="${sizeClass} font-extrabold tracking-tight" style="color: ${textColor}; text-align: ${textAlign}; margin-bottom: ${styles.marginBottom || 16}px;">${el.content || ''}</${Tag}>`;
+      const tag = el.tag || 'h2';
+      let sizeClass = 'text-3xl sm:text-4xl font-extrabold tracking-tight';
+      if (tag === 'h1') sizeClass = 'text-4xl sm:text-6xl font-black tracking-tight leading-tight';
+      if (tag === 'h3') sizeClass = 'text-2xl sm:text-3xl font-bold';
+      if (tag === 'h4') sizeClass = 'text-xl sm:text-2xl font-semibold';
+      return `<${tag} class="${sizeClass} ${align} mb-4" style="${customStyle}">${escapeHtml(el.content || '')}</${tag}>`;
     }
 
     case 'paragraph': {
-      const sizeClass = styles.fontSize === 'lg' ? 'text-lg md:text-xl' : 'text-base';
-      return `<p class="${sizeClass} leading-relaxed" style="color: ${textColor}; text-align: ${textAlign}; margin-bottom: ${styles.marginBottom || 16}px;">${el.content || ''}</p>`;
-    }
-
-    case 'badge': {
-      return `<div style="text-align: ${textAlign}; margin-bottom: ${styles.marginBottom || 16}px;">
-        <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold" style="background-color: ${styles.backgroundColor || '#1e1b4b'}; color: ${styles.textColor || '#818cf8'};">
-          ${escapeHtml(el.badgeText || '')}
-        </span>
-      </div>`;
+      return `<p class="text-base sm:text-lg text-slate-300 ${align} leading-relaxed mb-6 max-w-3xl" style="${customStyle}">${escapeHtml(
+        el.content || ''
+      )}</p>`;
     }
 
     case 'button': {
-      return `<div style="text-align: ${textAlign}; margin-bottom: ${styles.marginBottom || 16}px;">
-        <a href="${el.href || '#'}" class="inline-flex items-center justify-center font-bold transition-all shadow-md hover:opacity-90" style="background-color: ${styles.backgroundColor || theme.primaryColor}; color: ${styles.textColor || '#ffffff'}; padding: ${styles.paddingTop || 12}px ${styles.paddingRight || 28}px; border-radius: ${styles.borderRadius || '0.5rem'};">
-          ${escapeHtml(el.content || 'Nút Bấm')}
+      const isPrimary = el.variant !== 'secondary' && el.variant !== 'outline';
+      const bgClass = isPrimary ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30' : 'border border-slate-700 hover:bg-slate-800 text-slate-200';
+      return `<div class="${align} my-4">
+        <a href="${escapeHtml(el.href || '#')}" class="inline-flex items-center justify-center px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 ${bgClass}">
+          ${escapeHtml(el.content || 'Nhấp vào đây')}
         </a>
       </div>`;
     }
 
     case 'image': {
-      return `<div class="w-full overflow-hidden flex justify-center" style="margin-top: ${styles.marginTop || 0}px; margin-bottom: ${styles.marginBottom || 24}px;">
-        <img src="${el.src || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&auto=format&fit=crop'}" alt="${escapeHtml(el.alt || '')}" class="w-full max-w-5xl object-cover rounded-xl shadow-xl" style="border: ${styles.borderWidth || 0}px solid ${styles.borderColor || 'transparent'};" />
+      return `<figure class="${align} my-6">
+        <img src="${escapeHtml(el.src || '')}" alt="${escapeHtml(el.alt || 'Hình ảnh website')}" class="rounded-2xl max-w-full h-auto mx-auto shadow-2xl border border-slate-800/80" loading="lazy" />
+      </figure>`;
+    }
+
+    case 'badge': {
+      return `<div class="${align} mb-3">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+          ${escapeHtml(el.content || 'HOT FEATURE')}
+        </span>
       </div>`;
     }
 
     case 'card': {
       const items = el.items || [];
-      const cols = styles.columns || 3;
-      const colClass = cols === 3 ? 'grid-cols-1 md:grid-cols-3' : cols === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-4';
-
-      return `<div class="grid ${colClass} gap-6 my-6">
+      return `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 my-8">
         ${items
           .map(
             (item) => `
-          <div class="p-6 rounded-xl border border-slate-800 bg-slate-800/60 shadow-lg hover:border-slate-700 transition">
-            ${item.image ? `<img src="${item.image}" alt="${escapeHtml(item.title)}" class="w-full h-48 object-cover rounded-lg mb-4" />` : ''}
-            <h4 class="text-xl font-bold text-white mb-2">${escapeHtml(item.title)}</h4>
-            ${item.subtitle ? `<p class="text-sm text-indigo-400 font-medium mb-2">${escapeHtml(item.subtitle)}</p>` : ''}
-            ${item.description ? `<p class="text-slate-300 text-sm leading-relaxed">${escapeHtml(item.description)}</p>` : ''}
-            ${item.price ? `<p class="text-lg font-bold text-emerald-400 mt-3">${escapeHtml(item.price)}</p>` : ''}
-            ${item.buttonText ? `<button class="mt-4 w-full py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition">${escapeHtml(item.buttonText)}</button>` : ''}
+          <div class="p-6 rounded-2xl border border-slate-800 bg-slate-900/60 hover:border-indigo-500/50 transition duration-300 shadow-xl">
+            ${item.icon ? `<div class="w-12 h-12 rounded-xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center text-xl font-bold mb-4">✦</div>` : ''}
+            <h3 class="text-lg font-bold text-white mb-2">${escapeHtml(item.title)}</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">${escapeHtml(item.description || '')}</p>
           </div>
         `
           )
@@ -180,34 +225,28 @@ function renderElementHtml(el: CanvasElement, theme: any): string {
 
     case 'pricing-card': {
       const items = el.items || [];
-      return `<div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8">
+      return `<div class="grid md:grid-cols-3 gap-8 my-10 max-w-6xl mx-auto">
         ${items
           .map(
             (item) => `
-          <div class="p-8 rounded-2xl border ${item.popular ? 'border-indigo-500 bg-slate-800/90 ring-2 ring-indigo-500 shadow-2xl relative' : 'border-slate-800 bg-slate-800/50'} flex flex-col justify-between">
-            ${item.popular ? `<div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider py-1 px-4 rounded-full">Phổ Biến Nhất</div>` : ''}
+          <div class="p-8 rounded-3xl border ${item.popular ? 'border-indigo-500 bg-indigo-950/20 shadow-2xl shadow-indigo-600/20 relative' : 'border-slate-800 bg-slate-900/40'} flex flex-col justify-between">
+            ${item.popular ? `<span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-600 text-white font-extrabold text-[10px] tracking-wider uppercase rounded-full">Phổ Biến Nhất</span>` : ''}
             <div>
-              <h3 class="text-2xl font-bold text-white">${escapeHtml(item.title)}</h3>
-              <p class="text-sm text-slate-400 mt-2">${escapeHtml(item.description || '')}</p>
-              <div class="my-6">
-                <span class="text-4xl font-extrabold text-white">${escapeHtml(item.price || '')}</span>
-                <span class="text-slate-400 text-sm">${escapeHtml(item.period || '')}</span>
+              <h3 class="text-xl font-bold text-white mb-2">${escapeHtml(item.title)}</h3>
+              <p class="text-xs text-slate-400 mb-6">${escapeHtml(item.description || '')}</p>
+              <div class="flex items-baseline gap-1 mb-6">
+                <span class="text-4xl font-extrabold text-white">${escapeHtml(item.price || '0đ')}</span>
+                <span class="text-xs text-slate-400">/${escapeHtml(item.period || 'tháng')}</span>
               </div>
-              <ul class="space-y-3 mb-8 text-sm text-slate-300">
+              <ul class="space-y-3 mb-8 text-sm text-slate-300 border-t border-slate-800/80 pt-6">
                 ${(item.features || [])
-                  .map(
-                    (f) => `
-                  <li class="flex items-center gap-2">
-                    <span class="text-emerald-400 font-bold">✓</span> ${escapeHtml(f)}
-                  </li>
-                `
-                  )
+                  .map((feat) => `<li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> ${escapeHtml(feat)}</li>`)
                   .join('')}
               </ul>
             </div>
-            <button class="w-full py-3 rounded-xl font-bold transition ${item.popular ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}">
-              ${escapeHtml(item.buttonText || 'Chọn Gói')}
-            </button>
+            <a href="#" class="w-full py-3 text-center rounded-xl font-bold text-sm transition ${item.popular ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'}">
+              ${escapeHtml(item.buttonText || 'Bắt Đầu Ngay')}
+            </a>
           </div>
         `
           )
@@ -217,41 +256,22 @@ function renderElementHtml(el: CanvasElement, theme: any): string {
 
     case 'testimonial-card': {
       const items = el.items || [];
-      return `<div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8">
+      return `<div class="grid md:grid-cols-3 gap-6 my-8">
         ${items
           .map(
             (item) => `
-          <div class="p-6 rounded-2xl border border-slate-800 bg-slate-800/60 shadow-lg flex flex-col justify-between">
-            <div>
-              <div class="flex items-center gap-1 text-amber-400 mb-3">
-                ${'★'.repeat(item.rating || 5)}
+          <div class="p-6 rounded-2xl border border-slate-800 bg-slate-900/40 shadow-lg">
+            <div class="flex gap-1 text-amber-400 text-sm mb-4">★★★★★</div>
+            <p class="text-slate-300 text-sm italic mb-6 leading-relaxed">"${escapeHtml(item.description || '')}"</p>
+            <div class="flex items-center gap-3 pt-4 border-t border-slate-800">
+              <div class="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
+                ${escapeHtml(item.author?.[0] || 'U')}
               </div>
-              <h4 class="text-lg font-bold text-white mb-2">"${escapeHtml(item.title)}"</h4>
-              <p class="text-slate-300 text-sm leading-relaxed mb-6">${escapeHtml(item.description || '')}</p>
-            </div>
-            <div class="flex items-center gap-3 pt-4 border-t border-slate-700/60">
-              ${item.avatar ? `<img src="${item.avatar}" alt="${escapeHtml(item.author || '')}" class="w-10 h-10 rounded-full object-cover border border-slate-600" />` : ''}
               <div>
-                <p class="text-sm font-bold text-white">${escapeHtml(item.author || '')}</p>
-                <p class="text-xs text-slate-400">${escapeHtml(item.role || '')}</p>
+                <h4 class="text-xs font-bold text-white">${escapeHtml(item.author || '')}</h4>
+                <p class="text-[11px] text-slate-400">${escapeHtml(item.role || '')}</p>
               </div>
             </div>
-          </div>
-        `
-          )
-          .join('')}
-      </div>`;
-    }
-
-    case 'stats-item': {
-      const items = el.items || [];
-      return `<div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center my-6">
-        ${items
-          .map(
-            (item) => `
-          <div class="p-4">
-            <div class="text-3xl md:text-4xl font-extrabold text-indigo-400">${escapeHtml(item.statNumber || '')}</div>
-            <div class="text-sm text-slate-400 mt-1">${escapeHtml(item.statLabel || '')}</div>
           </div>
         `
           )
@@ -261,13 +281,13 @@ function renderElementHtml(el: CanvasElement, theme: any): string {
 
     case 'accordion': {
       const items = el.items || [];
-      return `<div class="space-y-4 max-w-3xl mx-auto my-8">
+      return `<div class="max-w-3xl mx-auto space-y-3 my-8">
         ${items
           .map(
             (item) => `
-          <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-800/40">
-            <button class="accordion-header w-full px-6 py-4 text-left flex items-center justify-between font-bold text-white hover:bg-slate-800/80 transition">
-              <span>${escapeHtml(item.title)}</span>
+          <div class="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden">
+            <button class="accordion-header w-full px-6 py-4 flex items-center justify-between text-left font-semibold text-sm text-slate-200 hover:text-indigo-400 transition">
+              <span>${escapeHtml(item.title || item.question || '')}</span>
               <span class="accordion-icon transition-transform duration-200">▼</span>
             </button>
             <div class="px-6 py-4 text-slate-300 text-sm leading-relaxed bg-slate-900/40 hidden border-t border-slate-800">

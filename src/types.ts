@@ -136,19 +136,39 @@ export interface WebsiteTheme {
   radius: string;
 }
 
+export interface SEOSettings {
+  title: string;
+  metaDescription: string;
+  keywords?: string;
+  canonicalUrl?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article' | 'product' | 'profile';
+  twitterCard?: 'summary' | 'summary_large_image';
+  twitterHandle?: string;
+  faviconUrl?: string;
+  googleSiteVerification?: string;
+  bingSiteVerification?: string;
+  robotsIndex?: boolean;
+  robotsFollow?: boolean;
+  author?: string;
+  language?: string;
+  schemaType?: 'Organization' | 'LocalBusiness' | 'Product' | 'WebSite' | 'Article' | 'FAQPage';
+  schemaCustomJson?: string;
+  businessName?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  businessLogo?: string;
+  customCss?: string;
+  customJs?: string;
+}
+
 export interface WebsiteProject {
   id: string;
   name: string;
   description: string;
   theme: WebsiteTheme;
   sections: CanvasSection[];
-  settings: {
-    title: string;
-    metaDescription: string;
-    faviconUrl?: string;
-    customCss?: string;
-    customJs?: string;
-  };
+  settings: SEOSettings;
   lastModified: number;
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Monitor,
   Tablet,
@@ -16,8 +16,11 @@ import {
   Layers,
   Save,
   Github,
+  Search,
+  Zap,
 } from 'lucide-react';
 import { DeviceMode, WebsiteProject } from '../types';
+import { auditProjectSEO } from '../services/seoService';
 
 interface TopNavbarProps {
   project: WebsiteProject;
@@ -30,6 +33,7 @@ interface TopNavbarProps {
   onRedo: () => void;
   onOpenTemplates: () => void;
   onOpenVersions: () => void;
+  onOpenSEO: () => void;
   onOpenTheme: () => void;
   onOpenExport: () => void;
   onOpenPreview: () => void;
@@ -49,6 +53,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onRedo,
   onOpenTemplates,
   onOpenVersions,
+  onOpenSEO,
   onOpenTheme,
   onOpenExport,
   onOpenPreview,
@@ -58,6 +63,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(project.name);
+
+  const seoReport = useMemo(() => auditProjectSEO(project), [project]);
 
   const handleTitleSubmit = () => {
     if (titleInput.trim()) {
@@ -215,6 +222,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           <span>Versions</span>
+        </button>
+
+        {/* SEO Google Optimization Suite Button */}
+        <button
+          onClick={onOpenSEO}
+          className="px-2.5 py-1.5 bg-gradient-to-r from-emerald-950/80 to-teal-950/80 hover:from-emerald-900/90 hover:to-teal-900/90 text-emerald-300 hover:text-emerald-200 border border-emerald-600/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+          title="Tối ưu SEO Google, xem trước SERP, Schema JSON-LD và Sitemap.xml"
+        >
+          <Search className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden sm:inline">SEO Google</span>
+          <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-emerald-500/30">
+            {seoReport.score}
+          </span>
         </button>
 
         {/* Template Gallery Button */}

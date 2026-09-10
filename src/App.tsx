@@ -21,6 +21,7 @@ import { PreviewModal } from './components/Modals/PreviewModal';
 import { ImagePickerModal } from './components/Modals/ImagePickerModal';
 import { IconPickerModal } from './components/Modals/IconPickerModal';
 import { GitHubPickerModal } from './components/Modals/GitHubPickerModal';
+import { SEOOptimizerModal } from './components/Modals/SEOOptimizerModal';
 import { AppVersionsDrawer } from './components/Versions/AppVersionsDrawer';
 import { createVersionSnapshot } from './services/versionService';
 
@@ -71,6 +72,7 @@ export default function App() {
   // Modals
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
   const [isVersionsDrawerOpen, setIsVersionsDrawerOpen] = useState(false);
+  const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isImagePickerModalOpen, setIsImagePickerModalOpen] = useState(false);
@@ -375,6 +377,7 @@ export default function App() {
         onRedo={handleRedo}
         onOpenTemplates={() => setIsTemplatesModalOpen(true)}
         onOpenVersions={() => setIsVersionsDrawerOpen(true)}
+        onOpenSEO={() => setIsSEOModalOpen(true)}
         onOpenTheme={() => {
           setActiveSidebarTab('theme');
           setIsSidebarOpen(true);
@@ -399,6 +402,7 @@ export default function App() {
           onApplyTemplate={handleApplyTemplate}
           onPreviewTemplate={(tpl) => handleApplyTemplate(tpl, 'replace')}
           onOpenTemplatesModal={() => setIsTemplatesModalOpen(true)}
+          onOpenSEOModal={() => setIsSEOModalOpen(true)}
           onAddSection={handleAddSection}
           onAddElement={handleAddElement}
           selectedSectionId={selectedSectionId}
@@ -467,6 +471,14 @@ export default function App() {
         onClose={() => setIsVersionsDrawerOpen(false)}
         currentProject={project}
         onRestoreVersion={handleRestoreVersion}
+      />
+
+      {/* SEO & Google Search Suite Modal */}
+      <SEOOptimizerModal
+        isOpen={isSEOModalOpen}
+        onClose={() => setIsSEOModalOpen(false)}
+        project={project}
+        setProject={setProject}
       />
 
       <ExportCodeModal
