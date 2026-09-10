@@ -29,6 +29,7 @@ interface TopNavbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onOpenTemplates: () => void;
+  onOpenVersions: () => void;
   onOpenTheme: () => void;
   onOpenExport: () => void;
   onOpenPreview: () => void;
@@ -47,6 +48,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onUndo,
   onRedo,
   onOpenTemplates,
+  onOpenVersions,
   onOpenTheme,
   onOpenExport,
   onOpenPreview,
@@ -205,6 +207,16 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
       {/* Right Actions */}
       <div className="flex items-center gap-2">
+        {/* Google AI Studio Style Versions Button */}
+        <button
+          onClick={onOpenVersions}
+          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 hover:border-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+          title="Lịch sử phiên bản & Khôi phục (App versions)"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span>Versions</span>
+        </button>
+
         {/* Template Gallery Button */}
         <button
           onClick={onOpenTemplates}

@@ -24,6 +24,8 @@ import {
   ShieldCheck,
   Bot,
   Layers,
+  Settings2,
+  Cpu,
 } from 'lucide-react';
 import {
   CanvasElement,
@@ -31,11 +33,15 @@ import {
   StyleProps,
   WebsiteProject,
   WebsiteTheme,
+  AIProviderConfig,
 } from '../../types';
 import {
   sendAIDesignChat,
   AIChatMessage,
+  getStoredProviderConfig,
 } from '../../services/aiService';
+import { AIProviderModal } from '../AI/AIProviderModal';
+
 
 interface InspectorPanelProps {
   project: WebsiteProject;
@@ -88,7 +94,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     }
   }, [selectedSectionId, selectedElementId, hasSelection]);
 
-  // AI Chat State
+  // AI Chat & Provider State
+  const [providerConfig, setProviderConfig] = useState<AIProviderConfig>(getStoredProviderConfig);
+  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
+
   const [messages, setMessages] = useState<AIChatMessage[]>(() => {
     try {
       const saved = localStorage.getItem('webstudio_ai_chat_history');
@@ -98,6 +107,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     }
     return INITIAL_MESSAGES;
   });
+
 
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -265,7 +275,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         selectedSectionId,
         selectedElementId,
         history: messages,
+        providerConfig,
       });
+
 
       const aiMsg: AIChatMessage = {
         id: `ai-${Date.now()}`,
@@ -411,13 +423,27 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
         <div className="flex items-center gap-1">
           {activeTab === 'ai' && (
-            <button
-              onClick={handleClearHistory}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-md transition"
-              title="Xóa lịch sử chat"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <>
+              <button
+                onClick={() => setIsProviderModalOpen(true)}
+                className="px-2 py-1 text-[11px] font-semibold text-indigo-300 hover:text-white bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-700/60 rounded-lg transition flex items-center gap-1"
+                title="Đổi mô hình AI / Custom LLM (DeepSeek, OpenRouter, Ollama, OpenAI...)"
+              >
+                <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline font-mono text-[10px] truncate max-w-[90px]">
+                  {providerConfig.provider === 'gemini' ? 'Gemini' : providerConfig.model}
+                </span>
+                <Settings2 className="w-3 h-3 text-slate-400" />
+              </button>
+
+              <button
+                onClick={handleClearHistory}
+                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-md transition"
+                title="Xóa lịch sử chat"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
 
           <button
@@ -428,6 +454,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             ✕
           </button>
         </div>
+
       </div>
 
       {/* ================= TAB 1: AI DESIGN CO-PILOT ================= */}
@@ -609,10 +636,15 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 </div>
                 <div className="bg-slate-800/90 text-slate-300 border border-slate-700/60 rounded-2xl rounded-tl-xs px-3.5 py-2 flex items-center gap-2 text-xs">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                  <span>AI đang phân tích và thiết kế theo yêu cầu...</span>
+                  <span>
+                    {providerConfig.provider === 'gemini'
+                      ? 'AI Gemini đang phân tích và thiết kế...'
+                      : `Mô hình ${providerConfig.model} đang tạo thiết kế...`}
+                  </span>
                 </div>
               </div>
             )}
+
 
             <div ref={messagesEndRef} />
           </div>
@@ -681,15 +713,29 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] text-slate-500 px-1">
-              <span>Nhấn <kbd className="bg-slate-800 px-1 py-0.5 rounded border border-slate-700 text-slate-400">Enter</kbd> gửi</span>
-              <span>Gemini 3.8 Flash</span>
+            <div className="flex items-center justify-between text-[10px] text-slate-500 px-1 pt-1 border-t border-slate-800/60">
+              <span className="flex items-center gap-1">
+                Nhấn <kbd className="bg-slate-800 px-1 py-0.5 rounded border border-slate-700 text-slate-400 font-mono text-[9px]">Enter</kbd> gửi
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsProviderModalOpen(true)}
+                className="flex items-center gap-1 text-slate-400 hover:text-indigo-300 transition group p-0.5 rounded hover:bg-slate-800/60"
+                title="Nhấp để đổi mô hình AI / Cấu hình Custom LLM"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="truncate max-w-[130px] font-mono text-[10px] text-slate-300 group-hover:text-white">
+                  {providerConfig.provider === 'gemini' ? 'Gemini 3.8 Flash' : providerConfig.model}
+                </span>
+                <Settings2 className="w-3 h-3 text-slate-500 group-hover:text-indigo-400" />
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* ================= TAB 2: INSPECTOR & STYLES ================= */}
+
       {activeTab === 'inspector' && (
         <div className="flex flex-col flex-1 overflow-hidden select-none">
           {!hasSelection ? (
@@ -1032,7 +1078,16 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           )}
         </div>
       )}
+
+      {/* Custom LLM Provider Settings Modal */}
+      <AIProviderModal
+        isOpen={isProviderModalOpen}
+        onClose={() => setIsProviderModalOpen(false)}
+        config={providerConfig}
+        onSaveConfig={(newCfg) => setProviderConfig(newCfg)}
+      />
     </aside>
   );
 };
+
 

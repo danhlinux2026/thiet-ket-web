@@ -30,19 +30,154 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Helper to extract JSON from any LLM response text
+function cleanAndParseJSON(rawText: string) {
+  if (!rawText) return null;
+  let text = rawText.trim();
+
+  // Remove markdown code blocks if present
+  if (text.startsWith('```json')) {
+    text = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+  } else if (text.startsWith('```')) {
+    text = text.replace(/^```\s*/i, '').replace(/\s*```$/, '');
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    // Attempt to extract the first JSON object {}
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        const extracted = text.substring(firstBrace, lastBrace + 1);
+        return JSON.parse(extracted);
+      } catch (innerErr) {
+        // failed
+      }
+    }
+    return null;
+  }
+}
+
+// Test Connection Endpoint for Custom LLMs
+app.post('/api/ai/test-connection', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { providerConfig } = req.body;
+    const provider = providerConfig?.provider || 'gemini';
+
+    if (provider === 'gemini') {
+      const apiKey = providerConfig?.apiKey?.trim() || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ success: false, error: 'Chưa có Gemini API Key' });
+      }
+      const client = new GoogleGenAI({ apiKey });
+      const modelName = providerConfig?.model || 'gemini-3.8-flash';
+      const testRes = await client.models.generateContent({
+        model: modelName,
+        contents: 'Xin chào, trả lời ngắn gọn "OK" để xác nhận kết nối.',
+      });
+      const latencyMs = Date.now() - startTime;
+      return res.json({
+        success: true,
+        latencyMs,
+        provider: 'gemini',
+        model: modelName,
+        message: `Kết nối thành công đến Google Gemini (${modelName})! Độ trễ: ${latencyMs}ms`,
+        sampleResponse: testRes.text?.trim() || 'OK',
+      });
+    }
+
+    // OpenAI-compatible / Custom LLM (OpenAI, DeepSeek, OpenRouter, Ollama, Custom)
+    const baseUrl = (providerConfig?.baseUrl || '').trim().replace(/\/+$/, '');
+    const model = (providerConfig?.model || '').trim();
+    const apiKey = (providerConfig?.apiKey || '').trim();
+
+    if (!baseUrl) {
+      return res.status(400).json({ success: false, error: 'Base URL không được để trống' });
+    }
+    if (!model) {
+      return res.status(400).json({ success: false, error: 'Model name không được để trống' });
+    }
+
+    const endpoint = `${baseUrl}/chat/completions`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    if (provider === 'openrouter') {
+      headers['HTTP-Referer'] = 'https://webstudio.dev';
+      headers['X-Title'] = 'WebStudio AI Co-Pilot';
+    }
+
+    const testPayload = {
+      model: model,
+      messages: [
+        { role: 'system', content: 'Bạn là trợ lý AI. Trả lời cực ngắn.' },
+        { role: 'user', content: 'Ping test. Trả lời "OK".' },
+      ],
+      max_tokens: 50,
+      temperature: 0.1,
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(testPayload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const latencyMs = Date.now() - startTime;
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({
+        success: false,
+        latencyMs,
+        error: `Máy chủ trả về HTTP ${response.status}: ${errText.slice(0, 300)}`,
+      });
+    }
+
+    const json: any = await response.json();
+    const replyText = json.choices?.[0]?.message?.content?.trim() || 'OK';
+
+    return res.json({
+      success: true,
+      latencyMs,
+      provider,
+      model,
+      message: `Kết nối thành công đến ${provider.toUpperCase()} (${model})! Độ trễ: ${latencyMs}ms`,
+      sampleResponse: replyText,
+    });
+  } catch (error: any) {
+    const latencyMs = Date.now() - startTime;
+    console.error('LLM Connection Test Failed:', error);
+    return res.status(500).json({
+      success: false,
+      latencyMs,
+      error: error.name === 'AbortError'
+        ? 'Kết nối quá thời gian chờ (Timeout sau 15s). Kiểm tra lại Base URL và mạng.'
+        : error.message || 'Không thể kết nối đến endpoint Custom LLM',
+    });
+  }
+});
+
 // AI Design Co-Pilot Chat Endpoint
 app.post('/api/ai/design-chat', async (req, res) => {
   try {
-    const { message, projectContext, selectedContext, history = [] } = req.body;
+    const { message, projectContext, selectedContext, history = [], providerConfig } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
-    }
-
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({
-        error: 'Chưa cấu hình GEMINI_API_KEY trong hệ thống. Vui lòng kiểm tra cài đặt Secrets.',
-      });
     }
 
     const systemInstruction = `
@@ -65,90 +200,213 @@ Website hiện tại bao gồm:
 
 QUY TẮC PHẢN HỒI:
 1. Bạn phải luôn trả lời bằng tiếng Việt thân thiện, súc tích, chuyên nghiệp và truyền cảm hứng.
-2. Bạn phải xuất ra phản hồi ở định dạng JSON có cấu trúc rõ ràng với:
-   - "reply": Lời giải thích ngắn gọn, súc tích về thay đổi hoặc lời khuyên thiết kế (1-3 câu).
-   - "actionType": Loại thao tác thực hiện ('ADD_SECTION' | 'UPDATE_THEME' | 'UPDATE_ELEMENT' | 'REPLACE_ALL_SECTIONS' | 'REWRITE_CONTENT' | 'OPTIMIZE_DESIGN' | 'NONE')
-   - "actionSummary": Tóm tắt ngắn hành động (ví dụ: "Thêm Section Bảng Giá 3 Gói", "Đổi Theme Cyberpunk Neon", "Cập nhật tiêu đề Hero").
-   - "suggestedActions": Danh sách 2-4 câu lệnh gợi ý tiếp theo người dùng có thể nhấp vào.
-   - "actionPayload": Dữ liệu chi tiết tương ứng với actionType:
-     * Nếu actionType === 'ADD_SECTION': Một object CanvasSection hoàn chỉnh (id ngẫu nhiên kiểu "sec-" + Date.now(), name, category: 'hero'|'features'|'pricing'|'testimonials'|'faq'|'cta'|'stats'|'contact'|'footer', layout: 'container'|'split-2'|'grid-3'|'grid-4'|'bento', styles: { backgroundColor, textColor, paddingTop: 60, paddingBottom: 60, ... }, elements: [danh sách CanvasElement phong phú, đẹp mắt]).
-     * Nếu actionType === 'UPDATE_THEME': Object WebsiteTheme hoàn chỉnh (id, name, fontHeading, fontBody, primaryColor, secondaryColor, accentColor, backgroundColor, cardBackground, textColor, textMuted, radius).
-     * Nếu actionType === 'UPDATE_ELEMENT': Object chứa { sectionId, elementId, updates: { content, styles, variant, items, ... } }.
-     * Nếu actionType === 'REPLACE_ALL_SECTIONS': Danh sách mảng các CanvasSection tạo nên toàn bộ landing page mới đầy đủ từ Header -> Hero -> Features -> Pricing -> Testimonials -> CTA -> Footer.
-     * Nếu actionType === 'REWRITE_CONTENT': Object chứa { target: 'all'|'hero'|'selected', sections: [...] hoặc updates: {...} }.
-     * Nếu actionType === 'NONE': null.
+2. BẠN BẮT BUỘC PHẢI TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON HỢP LỆ VỚI CÁC TRƯỜNG CHÍNH XÁC SAU (TUYỆT ĐỐI KHÔNG KÈM TEXT TỰ DO NGOÀI JSON):
+{
+  "reply": "Lời giải thích ngắn gọn, súc tích về thay đổi hoặc lời khuyên thiết kế (1-3 câu)",
+  "actionType": "ADD_SECTION" | "UPDATE_THEME" | "UPDATE_ELEMENT" | "REPLACE_ALL_SECTIONS" | "REWRITE_CONTENT" | "OPTIMIZE_DESIGN" | "NONE",
+  "actionSummary": "Tóm tắt ngắn gọn hành động (ví dụ: 'Thêm Section Bảng Giá 3 Gói', 'Đổi Theme Cyberpunk Neon')",
+  "suggestedActions": ["Gợi ý hành động 1", "Gợi ý hành động 2", "Gợi ý hành động 3"],
+  "actionPayload": <Object JSON chi tiết hoặc null>
+}
+
+CHI TIẾT actionPayload:
+- Nếu actionType === 'ADD_SECTION': Một object CanvasSection hoàn chỉnh (id ngẫu nhiên kiểu "sec-" + Date.now(), name: "Tên Khối", category: 'hero'|'features'|'pricing'|'testimonials'|'faq'|'cta'|'stats'|'contact'|'footer', layout: 'container'|'split-2'|'grid-3'|'grid-4'|'bento', styles: { backgroundColor: "#0f172a", textColor: "#ffffff", paddingTop: 60, paddingBottom: 60 }, elements: [danh sách các CanvasElement phong phú, đẹp mắt]).
+- Nếu actionType === 'UPDATE_THEME': Object WebsiteTheme hoàn chỉnh (id, name, fontHeading, fontBody, primaryColor, secondaryColor, accentColor, backgroundColor, cardBackground, textColor, textMuted, radius).
+- Nếu actionType === 'UPDATE_ELEMENT': Object chứa { sectionId, elementId, updates: { content, styles, variant, items, ... } }.
+- Nếu actionType === 'REPLACE_ALL_SECTIONS': Danh sách mảng các CanvasSection tạo nên toàn bộ landing page mới đầy đủ.
+- Nếu actionType === 'REWRITE_CONTENT': Object chứa { target: 'all'|'hero'|'selected', sections: [...] hoặc updates: {...} }.
+- Nếu actionType === 'NONE': null.
 
 CÁC ELEMENT TYPE HỖ TRỢ:
 'heading', 'paragraph', 'button', 'image', 'icon', 'badge', 'card', 'pricing-card', 'testimonial-card', 'accordion', 'form-input', 'divider', 'spacer', 'stats-item'.
-Tất cả hình ảnh dùng nguồn Unsplash chất lượng cao (https://images.unsplash.com/...) phù hợp chủ đề.
-Tất cả icon dùng tên icon Lucide hợp lệ (e.g. 'Sparkles', 'Shield', 'Zap', 'Check', 'Star', 'ArrowRight', 'Layers', 'Globe', 'Cpu', 'Users', 'TrendingUp', 'Heart', 'Mail', 'Phone', 'Lock').
+Tất cả hình ảnh dùng nguồn Unsplash (https://images.unsplash.com/...) chất lượng cao.
+Tất cả icon dùng tên icon Lucide hợp lệ ('Sparkles', 'Shield', 'Zap', 'Check', 'Star', 'ArrowRight', 'Layers', 'Globe', 'Cpu', 'Users', 'TrendingUp', 'Heart', 'Mail', 'Phone', 'Lock').
 `;
 
-    // Format chat history
-    const contents: any[] = [];
+    const provider = providerConfig?.provider || 'gemini';
+
+    // ================= BRANCH 1: DEFAULT / CUSTOM GEMINI =================
+    if (provider === 'gemini') {
+      const apiKey = providerConfig?.apiKey?.trim() || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          error: 'Chưa cấu hình GEMINI_API_KEY trong hệ thống. Vui lòng cung cấp API key trong phần Cài đặt LLM.',
+        });
+      }
+
+      const client = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      const contents: any[] = [];
+      if (Array.isArray(history) && history.length > 0) {
+        for (const h of history.slice(-6)) {
+          contents.push({
+            role: h.sender === 'user' ? 'user' : 'model',
+            parts: [{ text: h.text }],
+          });
+        }
+      }
+      contents.push({
+        role: 'user',
+        parts: [
+          {
+            text: `Yêu cầu của người dùng: "${message}". Hãy phân tích và đưa ra giải pháp thiết kế cùng payload JSON thay đổi phù hợp.`,
+          },
+        ],
+      });
+
+      const modelName = providerConfig?.model || 'gemini-3.8-flash';
+
+      const response = await client.models.generateContent({
+        model: modelName,
+        contents: contents,
+        config: {
+          systemInstruction,
+          temperature: providerConfig?.temperature ?? 0.7,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              reply: {
+                type: Type.STRING,
+                description: 'Lời giải thích và tư vấn thiết kế cho người dùng bằng tiếng Việt.',
+              },
+              actionType: {
+                type: Type.STRING,
+                description:
+                  'Loại thao tác: ADD_SECTION, UPDATE_THEME, UPDATE_ELEMENT, REPLACE_ALL_SECTIONS, REWRITE_CONTENT, OPTIMIZE_DESIGN, hoặc NONE.',
+              },
+              actionSummary: {
+                type: Type.STRING,
+                description: 'Tóm tắt ngắn gọn 1 dòng về thao tác.',
+              },
+              suggestedActions: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'Gợi ý 2-4 câu lệnh tiếp theo cho người dùng.',
+              },
+              actionPayload: {
+                type: Type.OBJECT,
+                description: 'Dữ liệu payload JSON để áp dụng trực tiếp vào dự án WebStudio.',
+              },
+            },
+            required: ['reply', 'actionType', 'actionSummary', 'suggestedActions'],
+          },
+        },
+      });
+
+      const rawText = response.text || '{}';
+      let parsedResult = cleanAndParseJSON(rawText);
+
+      if (!parsedResult) {
+        parsedResult = {
+          reply: rawText,
+          actionType: 'NONE',
+          actionSummary: 'Tư vấn thiết kế',
+          suggestedActions: ['Tạo section bảng giá', 'Đổi sang màu tối sang trọng', 'Thêm phần đánh giá'],
+          actionPayload: null,
+        };
+      }
+
+      return res.json({
+        success: true,
+        provider: 'gemini',
+        model: modelName,
+        data: parsedResult,
+      });
+    }
+
+    // ================= BRANCH 2: CUSTOM / OPENAI-COMPATIBLE LLM =================
+    const baseUrl = (providerConfig?.baseUrl || '').trim().replace(/\/+$/, '');
+    const model = (providerConfig?.model || '').trim();
+    const apiKey = (providerConfig?.apiKey || '').trim();
+
+    if (!baseUrl) {
+      return res.status(400).json({ error: 'Base URL của Custom LLM không được để trống' });
+    }
+    if (!model) {
+      return res.status(400).json({ error: 'Model name của Custom LLM không được để trống' });
+    }
+
+    const endpoint = `${baseUrl}/chat/completions`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    if (provider === 'openrouter') {
+      headers['HTTP-Referer'] = 'https://webstudio.dev';
+      headers['X-Title'] = 'WebStudio AI Co-Pilot';
+    }
+
+    // Build messages array
+    const messages: any[] = [
+      {
+        role: 'system',
+        content: `${systemInstruction}\n\nCHÚ Ý QUAN TRỌNG: Bạn chỉ được trả lời đúng 1 chuỗi JSON hợp lệ. Không viết thêm lời chào hay giải thích ngoài khối JSON.`,
+      },
+    ];
+
     if (Array.isArray(history) && history.length > 0) {
       for (const h of history.slice(-6)) {
-        contents.push({
-          role: h.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: h.text }],
+        messages.push({
+          role: h.sender === 'user' ? 'user' : 'assistant',
+          content: h.text,
         });
       }
     }
-    contents.push({
+
+    messages.push({
       role: 'user',
-      parts: [
-        {
-          text: `Yêu cầu của người dùng: "${message}". Hãy phân tích và đưa ra giải pháp thiết kế cùng payload JSON thay đổi phù hợp.`,
-        },
-      ],
+      content: `Yêu cầu của người dùng: "${message}". Hãy phân tích và đưa ra giải pháp thiết kế cùng payload JSON thay đổi phù hợp.`,
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: contents,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            reply: {
-              type: Type.STRING,
-              description: 'Lời giải thích và tư vấn thiết kế cho người dùng bằng tiếng Việt.',
-            },
-            actionType: {
-              type: Type.STRING,
-              description:
-                'Loại thao tác: ADD_SECTION, UPDATE_THEME, UPDATE_ELEMENT, REPLACE_ALL_SECTIONS, REWRITE_CONTENT, OPTIMIZE_DESIGN, hoặc NONE.',
-            },
-            actionSummary: {
-              type: Type.STRING,
-              description: 'Tóm tắt ngắn gọn 1 dòng về thao tác.',
-            },
-            suggestedActions: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: 'Gợi ý 2-4 câu lệnh tiếp theo cho người dùng.',
-            },
-            actionPayload: {
-              type: Type.OBJECT,
-              description: 'Dữ liệu payload JSON để áp dụng trực tiếp vào dự án WebStudio.',
-            },
-          },
-          required: ['reply', 'actionType', 'actionSummary', 'suggestedActions'],
-        },
-      },
-    });
+    const requestPayload: any = {
+      model,
+      messages,
+      temperature: providerConfig?.temperature ?? 0.7,
+    };
 
-    const rawText = response.text || '{}';
-    let parsedResult;
-    try {
-      parsedResult = JSON.parse(rawText);
-    } catch (parseErr) {
-      console.error('Failed to parse Gemini JSON response:', rawText);
+    // Try response_format json_object for supported providers
+    if (['openai', 'deepseek', 'openrouter'].includes(provider)) {
+      requestPayload.response_format = { type: 'json_object' };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestPayload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({
+        success: false,
+        error: `Custom LLM (${model}) trả về lỗi HTTP ${response.status}: ${errText.slice(0, 400)}`,
+      });
+    }
+
+    const data: any = await response.json();
+    const rawContent = data.choices?.[0]?.message?.content || '{}';
+    let parsedResult = cleanAndParseJSON(rawContent);
+
+    if (!parsedResult) {
       parsedResult = {
-        reply: rawText,
+        reply: rawContent,
         actionType: 'NONE',
         actionSummary: 'Tư vấn thiết kế',
         suggestedActions: ['Tạo section bảng giá', 'Đổi sang màu tối sang trọng', 'Thêm phần đánh giá'],
@@ -158,16 +416,21 @@ Tất cả icon dùng tên icon Lucide hợp lệ (e.g. 'Sparkles', 'Shield', 'Z
 
     return res.json({
       success: true,
+      provider,
+      model,
       data: parsedResult,
     });
   } catch (error: any) {
-    console.error('Gemini AI API Error:', error);
+    console.error('AI Co-Pilot Error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Lỗi xử lý yêu cầu AI',
+      error: error.name === 'AbortError'
+        ? 'Yêu cầu tới Custom LLM đã bị quá thời gian (Timeout 45s). Vui lòng thử lại hoặc giảm tải.'
+        : error.message || 'Lỗi xử lý yêu cầu AI',
     });
   }
 });
+
 
 // Quick AI Text Enhancer
 app.post('/api/ai/enhance-text', async (req, res) => {

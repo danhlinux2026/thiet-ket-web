@@ -35,6 +35,7 @@ interface SidebarContainerProps {
   setProject: React.Dispatch<React.SetStateAction<WebsiteProject>>;
   onApplyTemplate: (template: TemplateDefinition, mode: 'replace' | 'append') => void;
   onPreviewTemplate: (template: TemplateDefinition) => void;
+  onOpenTemplatesModal?: () => void;
   onAddSection: (section: CanvasSection) => void;
   onAddElement: (element: CanvasElement) => void;
   selectedSectionId: string | null;
@@ -57,6 +58,7 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
   setProject,
   onApplyTemplate,
   onPreviewTemplate,
+  onOpenTemplatesModal,
   onAddSection,
   onAddElement,
   selectedSectionId,
@@ -158,6 +160,8 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
               <TemplatesTab
                 onApplyTemplate={onApplyTemplate}
                 onPreviewTemplate={onPreviewTemplate}
+                project={project}
+                onOpenTemplatesModal={onOpenTemplatesModal}
               />
             )}
             {activeTab === 'blocks' && <BlocksTab onAddSection={onAddSection} />}

@@ -7,6 +7,7 @@ import {
   TemplateDefinition,
   CanvasSection,
   CanvasElement,
+  AppVersion,
 } from './types';
 import { TEMPLATES_CATALOG } from './data/templates';
 import { THEME_PRESETS } from './data/themes';
@@ -20,6 +21,8 @@ import { PreviewModal } from './components/Modals/PreviewModal';
 import { ImagePickerModal } from './components/Modals/ImagePickerModal';
 import { IconPickerModal } from './components/Modals/IconPickerModal';
 import { GitHubPickerModal } from './components/Modals/GitHubPickerModal';
+import { AppVersionsDrawer } from './components/Versions/AppVersionsDrawer';
+import { createVersionSnapshot } from './services/versionService';
 
 const STORAGE_KEY = 'webstudio_project_autosave_v1';
 
@@ -67,6 +70,7 @@ export default function App() {
 
   // Modals
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [isVersionsDrawerOpen, setIsVersionsDrawerOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isImagePickerModalOpen, setIsImagePickerModalOpen] = useState(false);
@@ -145,6 +149,11 @@ export default function App() {
 
   // Apply Template Action
   const handleApplyTemplate = (template: TemplateDefinition, mode: 'replace' | 'append') => {
+    // Save version snapshot before applying template so user can rollback anytime
+    createVersionSnapshot(project, `Trước khi áp dụng mẫu: ${template.name}`, {
+      tags: ['Mẫu'],
+    });
+
     if (mode === 'replace') {
       const clonedSections = template.sections.map((sec) => ({
         ...sec,
@@ -193,6 +202,18 @@ export default function App() {
         ...prev,
         sections: [...prev.sections, ...newSections],
       }));
+    }
+  };
+
+  // Restore Version Action
+  const handleRestoreVersion = (version: AppVersion) => {
+    if (version.projectSnapshot) {
+      setProject({
+        ...version.projectSnapshot,
+        lastModified: Date.now(),
+      });
+      setSelectedSectionId(null);
+      setSelectedElementId(null);
     }
   };
 
@@ -353,6 +374,7 @@ export default function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onOpenTemplates={() => setIsTemplatesModalOpen(true)}
+        onOpenVersions={() => setIsVersionsDrawerOpen(true)}
         onOpenTheme={() => {
           setActiveSidebarTab('theme');
           setIsSidebarOpen(true);
@@ -376,6 +398,7 @@ export default function App() {
           setProject={setProject}
           onApplyTemplate={handleApplyTemplate}
           onPreviewTemplate={(tpl) => handleApplyTemplate(tpl, 'replace')}
+          onOpenTemplatesModal={() => setIsTemplatesModalOpen(true)}
           onAddSection={handleAddSection}
           onAddElement={handleAddElement}
           selectedSectionId={selectedSectionId}
@@ -435,6 +458,15 @@ export default function App() {
         isOpen={isTemplatesModalOpen}
         onClose={() => setIsTemplatesModalOpen(false)}
         onApplyTemplate={handleApplyTemplate}
+        currentProject={project}
+      />
+
+      {/* Google AI Studio Style Version Management Drawer */}
+      <AppVersionsDrawer
+        isOpen={isVersionsDrawerOpen}
+        onClose={() => setIsVersionsDrawerOpen(false)}
+        currentProject={project}
+        onRestoreVersion={handleRestoreVersion}
       />
 
       <ExportCodeModal

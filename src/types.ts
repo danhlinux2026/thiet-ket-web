@@ -162,6 +162,18 @@ export interface TemplateDefinition {
   theme: WebsiteTheme;
   sections: CanvasSection[];
   tags: string[];
+  isCustom?: boolean;
+  createdAt?: number;
+}
+
+export interface AppVersion {
+  id: string;
+  name: string;
+  prompt?: string;
+  timestamp: number;
+  projectSnapshot: WebsiteProject;
+  tags?: string[];
+  isAutoSave?: boolean;
 }
 
 export interface BlockPreset {
@@ -173,3 +185,16 @@ export interface BlockPreset {
   thumbnail?: string;
   section: CanvasSection;
 }
+
+export type LLMProviderType = 'gemini' | 'openai' | 'deepseek' | 'openrouter' | 'ollama' | 'custom';
+
+export interface AIProviderConfig {
+  provider: LLMProviderType;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  temperature: number;
+  customHeaders?: Record<string, string>;
+}
+
