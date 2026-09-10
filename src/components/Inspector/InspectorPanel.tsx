@@ -300,12 +300,31 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         handleApplyAction(aiMsg.id, response.actionType, response.actionPayload);
       }
     } catch (err: any) {
+      let friendlyError = err.message || 'Không thể kết nối đến máy chủ AI';
+      try {
+        if (friendlyError.includes('{"error":') || friendlyError.includes('high demand') || friendlyError.includes('503')) {
+          const jsonStart = friendlyError.indexOf('{');
+          if (jsonStart !== -1) {
+            const parsed = JSON.parse(friendlyError.substring(jsonStart));
+            if (parsed?.error?.code === 503 || parsed?.error?.message?.includes('high demand') || parsed?.error?.status === 'UNAVAILABLE') {
+              friendlyError = 'Mô hình Google Gemini đang có lượng truy cập cao đột biến tạm thời từ Google (Lỗi 503 High Demand). Hệ thống khuyến nghị bạn thử lại sau vài giây hoặc đổi sang mô hình khác (DeepSeek, Groq, OpenRouter) bằng biểu tượng Cài đặt AI.';
+            } else if (parsed?.error?.message) {
+              friendlyError = parsed.error.message;
+            }
+          } else if (friendlyError.includes('503') || friendlyError.includes('high demand')) {
+            friendlyError = 'Mô hình Google Gemini đang có lượng truy cập cao đột biến tạm thời từ Google (Lỗi 503 High Demand). Vui lòng thử lại sau vài giây hoặc đổi mô hình trong Cài đặt AI.';
+          }
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+
       const errorMsg: AIChatMessage = {
         id: `err-${Date.now()}`,
         sender: 'assistant',
-        text: `Đã có lỗi: ${err.message || 'Không thể kết nối đến máy chủ AI'}. Bạn có thể thử lại sau giây lát.`,
+        text: `Đã có lỗi: ${friendlyError}`,
         timestamp: Date.now(),
-        suggestedActions: ['Thêm section Bảng Giá 3 Gói', 'Đổi màu website sang Dark Mode'],
+        suggestedActions: ['Thử lại', 'Thêm section Bảng Giá 3 Gói', 'Đổi màu website sang Dark Mode'],
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {

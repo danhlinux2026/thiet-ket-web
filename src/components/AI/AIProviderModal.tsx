@@ -200,19 +200,37 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({
                     type="text"
                     value={formData.baseUrl}
                     onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
-                    placeholder="https://api.openai.com/v1 hoặc http://localhost:11434/v1"
+                    placeholder="https://api.openai.com/v1 hoặc https://api.groq.com/openai/v1 hoặc http://localhost:11434/v1"
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none"
                   />
                   {formData.baseUrl !== currentPreset.defaultBaseUrl && (
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, baseUrl: currentPreset.defaultBaseUrl })}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-indigo-400 hover:text-white underline"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-indigo-400 hover:text-white underline cursor-pointer"
                     >
                       Mặc định
                     </button>
                   )}
                 </div>
+                
+                {/* Localhost Warning / Cloud Info */}
+                {(formData.baseUrl.includes('localhost') || formData.baseUrl.includes('127.0.0.1')) && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-amber-950/50 border border-amber-800/60 text-amber-200 text-[11px] leading-relaxed">
+                    <p className="font-semibold flex items-center gap-1.5 mb-1 text-amber-300">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      Lưu ý khi kết nối Localhost trên máy tính cá nhân:
+                    </p>
+                    <p className="text-amber-200/90 text-[10px]">
+                      WebStudio đang chạy trên máy chủ Cloud. Để ứng dụng kết nối được vào mô hình local (như Kiro, Ollama, LM Studio) trên máy của bạn:
+                    </p>
+                    <ul className="list-disc pl-4 mt-1 space-y-0.5 text-[10px] text-amber-200/80">
+                      <li>Cách 1: Chạy lệnh <code>ngrok http 20128</code> (hoặc cổng local của bạn) rồi dán URL <code>https://...ngrok-free.app/v1</code> vào ô Base URL ở trên.</li>
+                      <li>Cách 2: Hoặc dùng <strong className="text-amber-300">Groq Cloud API</strong> (miễn phí, siêu nhanh): Base URL <code>https://api.groq.com/openai/v1</code>, Model <code>llama-3.3-70b-versatile</code>.</li>
+                    </ul>
+                  </div>
+                )}
+
                 <span className="text-[10px] text-slate-500 mt-1 block">
                   {formData.provider === 'ollama'
                     ? 'Nếu chạy Ollama trên máy: mở terminal chạy "ollama run qwen2.5-coder:7b" và giữ Ollama hoạt động.'
@@ -221,17 +239,23 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({
               </div>
             )}
 
-            {/* API Key */}
-            {currentPreset.requiresApiKey && (
+            {/* API Key / Secret Token (Always visible for OpenAI, DeepSeek, OpenRouter, Custom, and Ollama) */}
+            {formData.provider !== 'gemini' && (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-300 font-semibold">
-                    API Key / Secret Token:
+                  <label className="text-[11px] text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>API Key / Secret Token:</span>
+                    {(formData.provider === 'custom' || formData.provider === 'ollama') && (
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        (Tùy chọn nếu chạy local, bắt buộc nếu dùng Cloud API)
+                      </span>
+                    )}
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="text-[10px] text-slate-400 hover:text-white"
+                    className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
                   >
                     {showApiKey ? 'Ẩn Key' : 'Hiện Key'}
                   </button>
@@ -246,13 +270,17 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({
                         ? 'sk-...'
                         : formData.provider === 'openrouter'
                         ? 'sk-or-v1-...'
+                        : formData.provider === 'custom'
+                        ? 'gsk_... (Groq) hoặc sk-... (vLLM/OpenAI) hoặc để trống nếu chạy local'
+                        : formData.provider === 'ollama'
+                        ? 'Để trống nếu không cấu hình mật khẩu/proxy'
                         : 'sk-...'
                     }
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
                 <span className="text-[10px] text-slate-500 mt-1 block">
-                  API Key được lưu an toàn trong trình duyệt (localStorage) của bạn và chỉ gửi trực tiếp khi gọi LLM.
+                  API Key được lưu an toàn trên trình duyệt của bạn (localStorage) và bảo mật tuyệt đối.
                 </span>
               </div>
             )}
@@ -261,13 +289,14 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({
             {formData.provider === 'gemini' && (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-300 font-semibold">
-                    Custom Gemini API Key (Tùy chọn):
+                  <label className="text-[11px] text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Gemini API Key Cá Nhân (Tùy chọn):</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="text-[10px] text-slate-400 hover:text-white"
+                    className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
                   >
                     {showApiKey ? 'Ẩn Key' : 'Hiện Key'}
                   </button>
@@ -276,9 +305,12 @@ export const AIProviderModal: React.FC<AIProviderModalProps> = ({
                   type={showApiKey ? 'text' : 'password'}
                   value={formData.apiKey}
                   onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-                  placeholder="Để trống sẽ tự động dùng Gemini API Key hệ thống của WebStudio"
+                  placeholder="Để trống sẽ tự động dùng Gemini API Key hệ thống của WebStudio (Đã kích hoạt sẵn)"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none"
                 />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  Mặc định hệ thống đã có sẵn Gemini AI. Bạn có thể nhập key riêng từ Google AI Studio nếu muốn dùng quota cá nhân.
+                </span>
               </div>
             )}
 

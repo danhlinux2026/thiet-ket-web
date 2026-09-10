@@ -39,6 +39,7 @@ export const PRESET_PROVIDERS: {
   defaultModel: string;
   recommendedModels: { id: string; name: string; tag: string }[];
   requiresApiKey: boolean;
+  supportsApiKey?: boolean;
   apiKeyHelpUrl?: string;
   defaultTemp: number;
 }[] = [
@@ -119,20 +120,25 @@ export const PRESET_PROVIDERS: {
       { id: 'mistral', name: 'Mistral (7B Instruct)', tag: 'Nhẹ Nhàng' },
     ],
     requiresApiKey: false,
+    supportsApiKey: true,
     defaultTemp: 0.5,
   },
   {
     provider: 'custom',
     title: 'Custom Endpoint (OpenAI API)',
-    description: 'Tùy chỉnh bất kỳ dịch vụ nào hỗ trợ chuẩn OpenAI (LM Studio, vLLM, Groq, Together AI, Azure).',
+    description: 'Tùy chỉnh bất kỳ dịch vụ nào hỗ trợ chuẩn OpenAI (Groq, Together AI, vLLM, LM Studio, Kiro).',
     badge: 'Tự Do',
-    defaultBaseUrl: 'http://localhost:1234/v1',
-    defaultModel: 'local-model',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
+    defaultModel: 'llama-3.3-70b-versatile',
     recommendedModels: [
-      { id: 'local-model', name: 'LM Studio / LocalAI Default', tag: 'Local' },
-      { id: 'llama-3.3-70b-versatile', name: 'Groq (llama-3.3-70b-versatile)', tag: 'Groq Siêu Tốc' },
+      { id: 'llama-3.3-70b-versatile', name: 'Groq: Llama 3.3 70B (Siêu Tốc & Miễn Phí)', tag: 'Khuyên Dùng' },
+      { id: 'qwen-2.5-coder-32b', name: 'Qwen 2.5 Coder 32B (Chuyên Code Web)', tag: 'Coder' },
+      { id: 'kiro', name: 'Kiro (Model Tùy Chọn Của Bạn)', tag: 'Custom' },
+      { id: 'local-model', name: 'LM Studio / LocalAI', tag: 'Local' },
     ],
-    requiresApiKey: false,
+    requiresApiKey: true,
+    supportsApiKey: true,
+    apiKeyHelpUrl: 'https://console.groq.com/keys',
     defaultTemp: 0.7,
   },
 ];

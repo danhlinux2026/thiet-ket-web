@@ -73,18 +73,45 @@ app.post('/api/ai/test-connection', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Chưa có Gemini API Key' });
       }
       const client = new GoogleGenAI({ apiKey });
-      const modelName = providerConfig?.model || 'gemini-3.8-flash';
-      const testRes = await client.models.generateContent({
-        model: modelName,
-        contents: 'Xin chào, trả lời ngắn gọn "OK" để xác nhận kết nối.',
-      });
+      let modelName = providerConfig?.model || 'gemini-3.8-flash';
+      let testRes: any;
+      let fallbackUsed = false;
+
+      try {
+        testRes = await client.models.generateContent({
+          model: modelName,
+          contents: 'Xin chào, trả lời ngắn gọn "OK" để xác nhận kết nối.',
+        });
+      } catch (geminiErr: any) {
+        const errMsg = geminiErr?.message || '';
+        const isHighDemand =
+          errMsg.includes('503') ||
+          errMsg.includes('high demand') ||
+          errMsg.includes('UNAVAILABLE') ||
+          errMsg.includes('429');
+
+        if (isHighDemand && modelName !== 'gemini-2.5-flash') {
+          console.warn(`Gemini ${modelName} experiencing high demand, falling back to gemini-2.5-flash for test...`);
+          modelName = 'gemini-2.5-flash';
+          fallbackUsed = true;
+          testRes = await client.models.generateContent({
+            model: modelName,
+            contents: 'Xin chào, trả lời ngắn gọn "OK" để xác nhận kết nối.',
+          });
+        } else {
+          throw geminiErr;
+        }
+      }
+
       const latencyMs = Date.now() - startTime;
       return res.json({
         success: true,
         latencyMs,
         provider: 'gemini',
         model: modelName,
-        message: `Kết nối thành công đến Google Gemini (${modelName})! Độ trễ: ${latencyMs}ms`,
+        message: fallbackUsed
+          ? `Kết nối thành công đến Google Gemini (${modelName})! (Tự động chuyển sang bản 2.5 Flash ổn định vì bản 3.8 Flash đang có lưu lượng truy cập cao từ Google). Độ trễ: ${latencyMs}ms`
+          : `Kết nối thành công đến Google Gemini (${modelName})! Độ trễ: ${latencyMs}ms`,
         sampleResponse: testRes.text?.trim() || 'OK',
       });
     }
@@ -161,12 +188,24 @@ app.post('/api/ai/test-connection', async (req, res) => {
   } catch (error: any) {
     const latencyMs = Date.now() - startTime;
     console.error('LLM Connection Test Failed:', error);
+
+    const errorMsg = error.message || '';
+    const isLocalhost =
+      req.body?.providerConfig?.baseUrl?.includes('localhost') ||
+      req.body?.providerConfig?.baseUrl?.includes('127.0.0.1');
+
+    let userFriendlyError = error.message || 'Không thể kết nối đến endpoint Custom LLM';
+
+    if (error.name === 'AbortError') {
+      userFriendlyError = 'Kết nối quá thời gian chờ (Timeout sau 15s). Kiểm tra lại Base URL và mạng.';
+    } else if (isLocalhost || errorMsg.includes('fetch failed') || errorMsg.includes('ECONNREFUSED')) {
+      userFriendlyError = `Không thể kết nối tới ${req.body?.providerConfig?.baseUrl}: WebStudio đang chạy trên máy chủ Cloud nên không thể chạm tới cổng localhost trên máy tính cá nhân của bạn. Gợi ý: Hãy dùng ngrok (chạy "ngrok http <cổng>") rồi dán URL https://...ngrok-free.app vào Base URL, hoặc dùng Groq Cloud miễn phí (https://api.groq.com/openai/v1).`;
+    }
+
     return res.status(500).json({
       success: false,
       latencyMs,
-      error: error.name === 'AbortError'
-        ? 'Kết nối quá thời gian chờ (Timeout sau 15s). Kiểm tra lại Base URL và mạng.'
-        : error.message || 'Không thể kết nối đến endpoint Custom LLM',
+      error: userFriendlyError,
     });
   }
 });
@@ -261,45 +300,99 @@ Tất cả icon dùng tên icon Lucide hợp lệ ('Sparkles', 'Shield', 'Zap', 
         ],
       });
 
-      const modelName = providerConfig?.model || 'gemini-3.8-flash';
+      let modelName = providerConfig?.model || 'gemini-3.8-flash';
+      let response: any;
 
-      const response = await client.models.generateContent({
-        model: modelName,
-        contents: contents,
-        config: {
-          systemInstruction,
-          temperature: providerConfig?.temperature ?? 0.7,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              reply: {
-                type: Type.STRING,
-                description: 'Lời giải thích và tư vấn thiết kế cho người dùng bằng tiếng Việt.',
+      try {
+        response = await client.models.generateContent({
+          model: modelName,
+          contents: contents,
+          config: {
+            systemInstruction,
+            temperature: providerConfig?.temperature ?? 0.7,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                reply: {
+                  type: Type.STRING,
+                  description: 'Lời giải thích và tư vấn thiết kế cho người dùng bằng tiếng Việt.',
+                },
+                actionType: {
+                  type: Type.STRING,
+                  description:
+                    'Loại thao tác: ADD_SECTION, UPDATE_THEME, UPDATE_ELEMENT, REPLACE_ALL_SECTIONS, REWRITE_CONTENT, OPTIMIZE_DESIGN, hoặc NONE.',
+                },
+                actionSummary: {
+                  type: Type.STRING,
+                  description: 'Tóm tắt ngắn gọn 1 dòng về thao tác.',
+                },
+                suggestedActions: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: 'Gợi ý 2-4 câu lệnh tiếp theo cho người dùng.',
+                },
+                actionPayload: {
+                  type: Type.OBJECT,
+                  description: 'Dữ liệu payload JSON để áp dụng trực tiếp vào dự án WebStudio.',
+                },
               },
-              actionType: {
-                type: Type.STRING,
-                description:
-                  'Loại thao tác: ADD_SECTION, UPDATE_THEME, UPDATE_ELEMENT, REPLACE_ALL_SECTIONS, REWRITE_CONTENT, OPTIMIZE_DESIGN, hoặc NONE.',
-              },
-              actionSummary: {
-                type: Type.STRING,
-                description: 'Tóm tắt ngắn gọn 1 dòng về thao tác.',
-              },
-              suggestedActions: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Gợi ý 2-4 câu lệnh tiếp theo cho người dùng.',
-              },
-              actionPayload: {
+              required: ['reply', 'actionType', 'actionSummary', 'suggestedActions'],
+            },
+          },
+        });
+      } catch (geminiErr: any) {
+        const errMsg = geminiErr?.message || '';
+        const isOverloaded =
+          errMsg.includes('503') ||
+          errMsg.includes('high demand') ||
+          errMsg.includes('UNAVAILABLE') ||
+          errMsg.includes('429');
+
+        if (isOverloaded && modelName !== 'gemini-2.5-flash') {
+          console.warn(`Gemini ${modelName} overloaded (503), auto-falling back to gemini-2.5-flash...`);
+          modelName = 'gemini-2.5-flash';
+          response = await client.models.generateContent({
+            model: modelName,
+            contents: contents,
+            config: {
+              systemInstruction,
+              temperature: providerConfig?.temperature ?? 0.7,
+              responseMimeType: 'application/json',
+              responseSchema: {
                 type: Type.OBJECT,
-                description: 'Dữ liệu payload JSON để áp dụng trực tiếp vào dự án WebStudio.',
+                properties: {
+                  reply: {
+                    type: Type.STRING,
+                    description: 'Lời giải thích và tư vấn thiết kế cho người dùng bằng tiếng Việt.',
+                  },
+                  actionType: {
+                    type: Type.STRING,
+                    description:
+                      'Loại thao tác: ADD_SECTION, UPDATE_THEME, UPDATE_ELEMENT, REPLACE_ALL_SECTIONS, REWRITE_CONTENT, OPTIMIZE_DESIGN, hoặc NONE.',
+                  },
+                  actionSummary: {
+                    type: Type.STRING,
+                    description: 'Tóm tắt ngắn gọn 1 dòng về thao tác.',
+                  },
+                  suggestedActions: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: 'Gợi ý 2-4 câu lệnh tiếp theo cho người dùng.',
+                  },
+                  actionPayload: {
+                    type: Type.OBJECT,
+                    description: 'Dữ liệu payload JSON để áp dụng trực tiếp vào dự án WebStudio.',
+                  },
+                },
+                required: ['reply', 'actionType', 'actionSummary', 'suggestedActions'],
               },
             },
-            required: ['reply', 'actionType', 'actionSummary', 'suggestedActions'],
-          },
-        },
-      });
+          });
+        } else {
+          throw geminiErr;
+        }
+      }
 
       const rawText = response.text || '{}';
       let parsedResult = cleanAndParseJSON(rawText);
@@ -422,11 +515,24 @@ Tất cả icon dùng tên icon Lucide hợp lệ ('Sparkles', 'Shield', 'Zap', 
     });
   } catch (error: any) {
     console.error('AI Co-Pilot Error:', error);
+    const errorMsg = error.message || '';
+    const isLocalhost =
+      req.body?.providerConfig?.baseUrl?.includes('localhost') ||
+      req.body?.providerConfig?.baseUrl?.includes('127.0.0.1');
+
+    let userFriendlyError = error.message || 'Lỗi xử lý yêu cầu AI';
+
+    if (error.name === 'AbortError') {
+      userFriendlyError = 'Yêu cầu tới AI đã bị quá thời gian chờ (Timeout). Vui lòng thử lại.';
+    } else if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('UNAVAILABLE')) {
+      userFriendlyError = 'Mô hình Google Gemini đang có lượng truy cập cao đột biến từ phía Google (Lỗi 503 tạm thời). Bạn hãy thử lại sau giây lát, hoặc bấm vào biểu tượng Cài đặt AI (trên cùng) để chuyển sang dùng DeepSeek, OpenRouter, Groq hoặc OpenAI.';
+    } else if (isLocalhost && (errorMsg.includes('fetch failed') || errorMsg.includes('ECONNREFUSED'))) {
+      userFriendlyError = `Không thể kết nối đến ${req.body?.providerConfig?.baseUrl}: WebStudio đang chạy trên máy chủ Cloud nên không thể tự kết nối vào cổng localhost trên máy tính riêng của bạn. Gợi ý: Hãy dùng ngrok ("ngrok http <cổng>") để tạo link công khai, hoặc dùng Groq Cloud API miễn phí (Base URL: https://api.groq.com/openai/v1, Model: llama-3.3-70b-versatile).`;
+    }
+
     return res.status(500).json({
       success: false,
-      error: error.name === 'AbortError'
-        ? 'Yêu cầu tới Custom LLM đã bị quá thời gian (Timeout 45s). Vui lòng thử lại hoặc giảm tải.'
-        : error.message || 'Lỗi xử lý yêu cầu AI',
+      error: userFriendlyError,
     });
   }
 });
