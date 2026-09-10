@@ -84,9 +84,9 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
   ];
 
   return (
-    <div className="flex h-full select-none z-20 shrink-0">
+    <div className="flex h-full select-none z-20 shrink-0 relative">
       {/* Icon Navigation Rail */}
-      <div className="w-16 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-3 justify-between shrink-0">
+      <div className="w-14 sm:w-16 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-3 justify-between shrink-0 z-30">
         <div className="flex flex-col items-center gap-1.5 w-full">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -102,7 +102,7 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
                     setIsOpen(true);
                   }
                 }}
-                className={`w-12 py-2.5 rounded-xl flex flex-col items-center justify-center gap-1 transition relative group ${
+                className={`w-11 sm:w-12 py-2.5 rounded-xl flex flex-col items-center justify-center gap-1 transition relative group cursor-pointer ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -110,7 +110,7 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
                 title={tab.label}
               >
                 <Icon className="w-4 h-4" />
-                <span className="text-[9px] font-medium leading-tight text-center truncate w-full px-1">
+                <span className="text-[9px] font-medium leading-tight text-center truncate w-full px-1 hidden xs:inline">
                   {tab.label}
                 </span>
 
@@ -133,16 +133,24 @@ export const SidebarContainer: React.FC<SidebarContainerProps> = ({
         {/* Toggle Collapse Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
           title={isOpen ? 'Thu gọn bảng' : 'Mở rộng bảng'}
         >
           {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
       </div>
 
+      {/* Mobile Backdrop when Sidebar Drawer is Open */}
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-30 transition-opacity"
+        />
+      )}
+
       {/* Expanded Sidebar Drawer */}
       {isOpen && (
-        <aside className="w-72 sm:w-80 bg-slate-900 border-r border-slate-800 flex flex-col h-full overflow-hidden shrink-0 shadow-xl">
+        <aside className="fixed lg:relative left-14 sm:left-16 lg:left-0 top-0 bottom-0 z-40 lg:z-auto w-72 sm:w-80 bg-slate-900 border-r border-slate-800 flex flex-col h-full overflow-hidden shrink-0 shadow-2xl">
           {/* Header Title */}
           <div className="h-11 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">

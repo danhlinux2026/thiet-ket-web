@@ -700,25 +700,86 @@ body {
 }
 
 @media (max-width: 1024px) {
-    .price-grid, .service-grid { grid-template-columns: repeat(2, 1fr); }
-    .vehicle-grid { grid-template-columns: repeat(3, 1fr); }
-    .testimonial-grid { grid-template-columns: repeat(2, 1fr); }
-    .footer-grid { grid-template-columns: repeat(2, 1fr); }
-    .hero-inner { grid-template-columns: 1fr; gap: 36px; }
-    .hero { padding: 72px 0 110px; }
+    .price-grid, .service-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .vehicle-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .testimonial-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+    .hero-inner { grid-template-columns: 1fr; gap: 32px; }
+    .hero { padding: 48px 0 80px; text-align: center; }
+    .hero-btns { justify-content: center; }
+    .hero-badges { justify-content: center; }
 }
+
 @media (max-width: 768px) {
     .nav-list { display: none; }
     .nav-toggle { display: flex; align-items: center; justify-content: center; }
-    .price-grid, .service-grid { grid-template-columns: 1fr; }
-    .vehicle-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .testimonial-grid { grid-template-columns: 1fr; }
+    .topbar-inner { flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; }
     .topbar .hide-sm { display: none; }
+    .price-grid, .service-grid { grid-template-columns: 1fr; gap: 16px; }
+    .vehicle-grid { grid-template-columns: 1fr; gap: 16px; }
+    .testimonial-grid { grid-template-columns: 1fr; gap: 16px; }
+    .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+    .header-inner { padding: 10px 0; }
+    .logo-text span { display: none; }
+    
+    /* Table Responsive Wrapper */
+    table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    
+    /* Mobile Touch Buttons */
+    .btn { width: 100%; text-align: center; justify-content: center; padding: 14px 20px; font-size: 1rem; }
+    .hero-btns { flex-direction: column; width: 100%; gap: 10px; }
+    .hero-btns .btn { width: 100%; }
+    
+    /* Vehicle Card Touch Optimization */
+    .vehicle-card { padding: 16px; }
+    .vehicle-img { height: 180px; object-fit: cover; }
+    .vehicle-actions { flex-direction: column; gap: 8px; }
+    .vehicle-actions .btn { width: 100%; }
 }
+
 @media (max-width: 480px) {
-    .hero { padding: 56px 0 96px; }
-    .stat { flex: 1; min-width: calc(50% - 6px); }
-    .vehicle-img { height: 110px; }
+    .container { padding: 0 14px; }
+    .hero { padding: 36px 0 60px; }
+    .hero-title { font-size: 1.5rem; line-height: 1.3; }
+    .section-title { font-size: 1.35rem; }
+    .stat { flex: 1; min-width: calc(50% - 6px); padding: 12px; }
+    .stat-num { font-size: 1.25rem; }
+    .vehicle-img { height: 160px; }
+    .price-card { padding: 16px; }
+}
+
+/* Floating Call & Zalo Bar for Mobile Phones */
+@media (max-width: 768px) {
+    .mobile-call-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        background: #0f172a;
+        border-top: 1px solid #1e293b;
+        padding: 8px 12px;
+        display: flex;
+        gap: 10px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+    }
+    .mobile-call-bar a {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 12px;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-decoration: none;
+    }
+    .mobile-btn-call { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .mobile-btn-zalo { background: linear-gradient(135deg, #059669, #10b981); }
+    
+    body { padding-bottom: 70px; }
 }
 `;
 
@@ -1272,6 +1333,16 @@ export const REAL_CAR_RENTAL_TEMPLATE: TemplateDefinition = {
     <a href="tel:0877019712" data-tel="sub" class="floating-call secondary" title="Gọi line phụ" aria-label="Gọi line phụ"><i class="fas fa-phone-volume"></i></a>
 </div>
 <a href="#" class="back-to-top" id="backToTop" title="Lên đầu trang" aria-label="Lên đầu trang"><i class="fas fa-arrow-up"></i></a>
+
+<!-- Thanh Gọi & Zalo Cố Định Đáy Điện Thoại -->
+<div class="mobile-call-bar">
+    <a href="tel:0911099712" class="mobile-btn-call">
+        <i class="fas fa-phone-alt"></i> Gọi Đặt Xe Ngay
+    </a>
+    <a href="https://zalo.me/0911099712" target="_blank" rel="noopener noreferrer" class="mobile-btn-zalo">
+        <i class="fas fa-comment-dots"></i> Chat Zalo Báo Giá
+    </a>
+</div>
 
 <!-- Trợ lý AI -->
 <button class="ai-fab" id="aiFab" aria-label="Mở trợ lý AI">

@@ -57,13 +57,13 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   const [isSectionDragOver, setIsSectionDragOver] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
 
-  // Viewport width mapping
+  // Viewport width mapping (Responsive for all device screens)
   const viewportWidthClass =
     deviceMode === 'desktop'
       ? 'w-full max-w-full'
       : deviceMode === 'tablet'
-      ? 'w-[768px] shadow-2xl my-6 rounded-2xl border border-slate-700 overflow-hidden'
-      : 'w-[375px] shadow-2xl my-6 rounded-3xl border border-slate-700 overflow-hidden';
+      ? 'w-[768px] max-w-full shadow-2xl my-2 sm:my-6 rounded-2xl border border-slate-700 overflow-hidden mx-auto'
+      : 'w-full max-w-[375px] shadow-2xl my-2 sm:my-6 rounded-3xl border border-slate-700 overflow-hidden mx-auto';
 
   const handleCanvasDrop = (e: React.DragEvent) => {
     e.preventDefault();

@@ -520,6 +520,51 @@ export default function App() {
         />
       </div>
 
+      {/* Mobile Bottom Quick Navigation Bar (Visible on Mobile/Tablet < 1024px) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-1.5 flex items-center justify-around text-slate-400 select-none shadow-2xl">
+        <button
+          onClick={() => {
+            setActiveSidebarTab('templates');
+            setIsSidebarOpen(!isSidebarOpen);
+          }}
+          className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+            isSidebarOpen ? 'text-indigo-400 font-bold' : 'hover:text-slate-200'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-400 mb-0.5"></span>
+          <span>Kho Mẫu</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveSidebarTab('blocks');
+            setIsSidebarOpen(true);
+          }}
+          className="flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium hover:text-slate-200 transition cursor-pointer"
+        >
+          <span className="w-2 h-2 rounded-full bg-indigo-400 mb-0.5"></span>
+          <span>Khối Sẵn</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setIsSidebarOpen(false);
+          }}
+          className="flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-bold text-indigo-400 transition cursor-pointer"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mb-0.5"></span>
+          <span>Xem Canvas</span>
+        </button>
+
+        <button
+          onClick={() => setIsPreviewModalOpen(true)}
+          className="flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium text-amber-400 hover:text-amber-300 transition cursor-pointer"
+        >
+          <span className="w-2 h-2 rounded-full bg-cyan-400 mb-0.5"></span>
+          <span>Xem Trực Tiếp</span>
+        </button>
+      </div>
+
       {/* Modals */}
       {/* Manual File Open / Import Modal */}
       <FileOpenModal
