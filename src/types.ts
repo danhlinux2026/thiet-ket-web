@@ -200,6 +200,7 @@ export interface TemplateDefinition {
   tags: string[];
   isCustom?: boolean;
   createdAt?: number;
+  settings?: Partial<SEOSettings>;
 }
 
 export interface AppVersion {

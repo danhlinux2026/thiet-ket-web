@@ -231,6 +231,7 @@ export default function App() {
           ...project.settings,
           title: template.name,
           metaDescription: template.description,
+          ...(template.settings || {}),
         },
         lastModified: Date.now(),
       });

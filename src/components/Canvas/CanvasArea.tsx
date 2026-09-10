@@ -299,21 +299,20 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                         setProject((prev) => ({
                           ...prev,
                           name: tpl.name,
+                          description: tpl.description,
                           theme: tpl.theme,
                           sections: JSON.parse(JSON.stringify(tpl.sections)),
                           settings: {
                             ...prev.settings,
-                            bodyClasses: 'bg-gray-100 font-sans text-gray-900',
-                            externalStylesheets: [
-                              'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
-                              'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
-                            ],
+                            title: tpl.name,
+                            metaDescription: tpl.description,
+                            ...(tpl.settings || {}),
                           },
                         }));
                       }
                     }}
                     className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition shadow flex items-center gap-1.5 cursor-pointer shrink-0 text-xs"
-                    title="Khôi phục lại giao diện mẫu gốc hoàn chỉnh nếu bạn chỉnh sửa bị lỗi"
+                    title="Khôi phục lại giao diện mẫu gốc hoàn chỉnh chuẩn 100% file HTML của bạn"
                   >
                     <RotateCcw className="w-3.5 h-3.5" /> Khôi Phục Bản Gốc 100%
                   </button>
