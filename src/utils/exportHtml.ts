@@ -65,8 +65,18 @@ ${schemaJson}
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
+  <!-- Font Awesome & External Stylesheets -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  ${(settings.externalStylesheets || [])
+    .map((sheet) => `<link rel="stylesheet" href="${escapeHtml(sheet)}">`)
+    .join('\n  ')}
+
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  ${(settings.externalScripts || [])
+    .filter((s) => !s.includes('tailwindcss'))
+    .map((src) => `<script src="${escapeHtml(src)}"></script>`)
+    .join('\n  ')}
   <script>
     tailwind.config = {
       theme: {
@@ -136,6 +146,10 @@ ${sectionsHtml}
 }
 
 function renderSectionHtml(section: CanvasSection, theme: any): string {
+  if (section.rawHtml) {
+    return section.rawHtml;
+  }
+
   const bg = section.styles.backgroundColor || 'transparent';
   const pt = section.styles.paddingTop || 60;
   const pb = section.styles.paddingBottom || 60;

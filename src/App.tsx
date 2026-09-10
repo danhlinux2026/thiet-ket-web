@@ -22,6 +22,7 @@ import { ImagePickerModal } from './components/Modals/ImagePickerModal';
 import { IconPickerModal } from './components/Modals/IconPickerModal';
 import { GitHubPickerModal } from './components/Modals/GitHubPickerModal';
 import { SEOOptimizerModal } from './components/Modals/SEOOptimizerModal';
+import { FileOpenModal } from './components/Modals/FileOpenModal';
 import { AppVersionsDrawer } from './components/Versions/AppVersionsDrawer';
 import { createVersionSnapshot } from './services/versionService';
 
@@ -70,6 +71,9 @@ export default function App() {
   const [isSaved, setIsSaved] = useState(true);
 
   // Modals
+  const [isFileOpenModalOpen, setIsFileOpenModalOpen] = useState(false);
+  const [fileOpenInitialTab, setFileOpenInitialTab] = useState<'html' | 'json' | 'css' | 'media' | 'new'>('html');
+  const [fileOpenInitialContent, setFileOpenInitialContent] = useState<{ type: 'html' | 'json' | 'css' | 'image'; name: string; content: string } | undefined>(undefined);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
   const [isVersionsDrawerOpen, setIsVersionsDrawerOpen] = useState(false);
   const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
@@ -129,7 +133,49 @@ export default function App() {
     }
   }, [history, historyIndex]);
 
-  // Global Keyboard Shortcuts (Ctrl+Z, Ctrl+Y)
+  // Handle external file dropped onto canvas or window
+  const handleFileDropped = useCallback((file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const reader = new FileReader();
+
+    if (ext === 'html' || ext === 'htm' || ext === 'txt') {
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setFileOpenInitialTab('html');
+        setFileOpenInitialContent({ type: 'html', name: file.name, content: text });
+        setIsFileOpenModalOpen(true);
+      };
+      reader.readAsText(file);
+    } else if (ext === 'json') {
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setFileOpenInitialTab('json');
+        setFileOpenInitialContent({ type: 'json', name: file.name, content: text });
+        setIsFileOpenModalOpen(true);
+      };
+      reader.readAsText(file);
+    } else if (ext === 'css') {
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setFileOpenInitialTab('css');
+        setFileOpenInitialContent({ type: 'css', name: file.name, content: text });
+        setIsFileOpenModalOpen(true);
+      };
+      reader.readAsText(file);
+    } else if (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'].includes(ext || '')) {
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setFileOpenInitialTab('media');
+        setFileOpenInitialContent({ type: 'image', name: file.name, content: dataUrl });
+        setIsFileOpenModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setIsFileOpenModalOpen(true);
+    }
+  }, []);
+
+  // Global Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+O, Ctrl+S)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -143,6 +189,11 @@ export default function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        setFileOpenInitialTab('html');
+        setFileOpenInitialContent(undefined);
+        setIsFileOpenModalOpen(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -375,6 +426,11 @@ export default function App() {
         canRedo={historyIndex < history.length - 1}
         onUndo={handleUndo}
         onRedo={handleRedo}
+        onOpenFileModal={() => {
+          setFileOpenInitialTab('html');
+          setFileOpenInitialContent(undefined);
+          setIsFileOpenModalOpen(true);
+        }}
         onOpenTemplates={() => setIsTemplatesModalOpen(true)}
         onOpenVersions={() => setIsVersionsDrawerOpen(true)}
         onOpenSEO={() => setIsSEOModalOpen(true)}
@@ -435,6 +491,12 @@ export default function App() {
             setActiveSidebarTab('blocks');
             setIsSidebarOpen(true);
           }}
+          onOpenFileModal={() => {
+            setFileOpenInitialTab('html');
+            setFileOpenInitialContent(undefined);
+            setIsFileOpenModalOpen(true);
+          }}
+          onFileDropped={handleFileDropped}
           onOpenImagePickerForElement={handleOpenImagePickerForElement}
           onOpenIconPickerForElement={handleOpenIconPickerForElement}
         />
@@ -458,6 +520,19 @@ export default function App() {
       </div>
 
       {/* Modals */}
+      {/* Manual File Open / Import Modal */}
+      <FileOpenModal
+        isOpen={isFileOpenModalOpen}
+        onClose={() => {
+          setIsFileOpenModalOpen(false);
+          setFileOpenInitialContent(undefined);
+        }}
+        project={project}
+        setProject={setProject}
+        initialTab={fileOpenInitialTab}
+        initialContent={fileOpenInitialContent}
+      />
+
       <TemplateLibraryModal
         isOpen={isTemplatesModalOpen}
         onClose={() => setIsTemplatesModalOpen(false)}

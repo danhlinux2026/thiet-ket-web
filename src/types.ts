@@ -17,7 +17,8 @@ export type ElementType =
   | 'divider'
   | 'spacer'
   | 'video'
-  | 'stats-item';
+  | 'stats-item'
+  | 'html_embed';
 
 export type BlockCategory =
   | 'all'
@@ -41,7 +42,9 @@ export type TemplateCategory =
   | 'restaurant'
   | 'education'
   | 'agency'
-  | 'realestate';
+  | 'realestate'
+  | 'landing'
+  | 'services';
 
 export interface StyleProps {
   backgroundColor?: string;
@@ -108,6 +111,8 @@ export interface CanvasElement {
   }>;
   placeholder?: string;
   inputType?: 'text' | 'email' | 'textarea' | 'tel';
+  rawHtml?: string;
+  customClasses?: string;
 }
 
 export interface CanvasSection {
@@ -119,6 +124,11 @@ export interface CanvasSection {
   elements: CanvasElement[];
   locked?: boolean;
   hidden?: boolean;
+  rawHtml?: string;
+  mode?: 'visual' | 'raw_html';
+  customClasses?: string;
+  customCss?: string;
+  backgroundImage?: string;
 }
 
 export interface WebsiteTheme {
@@ -160,6 +170,11 @@ export interface SEOSettings {
   businessLogo?: string;
   customCss?: string;
   customJs?: string;
+  externalStylesheets?: string[];
+  externalScripts?: string[];
+  bodyClasses?: string;
+  bodyStyles?: Record<string, string>;
+  rawHeadHtml?: string;
 }
 
 export interface WebsiteProject {

@@ -332,7 +332,12 @@ export const GitHubPickerModal: React.FC<GitHubPickerModalProps> = ({
   const handleImportHtml = () => {
     if (!fileContent) return;
     try {
-      const parsed = parseHtmlToWebStudioSections(fileContent, project.theme);
+      const parsed = parseHtmlToWebStudioSections(fileContent, project.theme, {
+        owner: currentOwner,
+        repo: currentRepo,
+        branch: currentBranch,
+        filePath: selectedFile?.path || '',
+      });
       if (parsed.sections.length > 0) {
         setProject((prev) => ({
           ...prev,
@@ -342,6 +347,24 @@ export const GitHubPickerModal: React.FC<GitHubPickerModalProps> = ({
             ...prev.settings,
             title: parsed.title || prev.settings.title,
             metaDescription: parsed.metaDescription || prev.settings.metaDescription,
+            businessPhone: parsed.businessPhone || prev.settings.businessPhone,
+            businessName: parsed.businessName || prev.settings.businessName,
+            bodyClasses: parsed.bodyClasses || prev.settings.bodyClasses,
+            externalStylesheets: [
+              ...(prev.settings.externalStylesheets || []),
+              ...(parsed.externalStylesheets || []).filter(
+                (s) => !(prev.settings.externalStylesheets || []).includes(s)
+              ),
+            ],
+            externalScripts: [
+              ...(prev.settings.externalScripts || []),
+              ...(parsed.externalScripts || []).filter(
+                (s) => !(prev.settings.externalScripts || []).includes(s)
+              ),
+            ],
+            customCss: parsed.extractedCss
+              ? `${prev.settings.customCss || ''}\n/* CSS imported from ${selectedFile?.name || 'GitHub'} */\n${parsed.extractedCss}`
+              : prev.settings.customCss,
           },
         }));
         onClose();
@@ -354,11 +377,34 @@ export const GitHubPickerModal: React.FC<GitHubPickerModalProps> = ({
   const handleAppendHtmlSection = () => {
     if (!fileContent) return;
     try {
-      const parsed = parseHtmlToWebStudioSections(fileContent, project.theme);
+      const parsed = parseHtmlToWebStudioSections(fileContent, project.theme, {
+        owner: currentOwner,
+        repo: currentRepo,
+        branch: currentBranch,
+        filePath: selectedFile?.path || '',
+      });
       if (parsed.sections.length > 0) {
         setProject((prev) => ({
           ...prev,
           sections: [...prev.sections, ...parsed.sections],
+          settings: {
+            ...prev.settings,
+            externalStylesheets: [
+              ...(prev.settings.externalStylesheets || []),
+              ...(parsed.externalStylesheets || []).filter(
+                (s) => !(prev.settings.externalStylesheets || []).includes(s)
+              ),
+            ],
+            externalScripts: [
+              ...(prev.settings.externalScripts || []),
+              ...(parsed.externalScripts || []).filter(
+                (s) => !(prev.settings.externalScripts || []).includes(s)
+              ),
+            ],
+            customCss: parsed.extractedCss
+              ? `${prev.settings.customCss || ''}\n/* CSS imported from ${selectedFile?.name || 'GitHub'} */\n${parsed.extractedCss}`
+              : prev.settings.customCss,
+          },
         }));
         onClose();
       }

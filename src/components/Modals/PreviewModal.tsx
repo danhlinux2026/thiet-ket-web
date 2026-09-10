@@ -106,19 +106,36 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ isOpen, onClose, pro
             fontFamily: theme.fontBody,
           }}
         >
+          {/* Custom Injected CSS from imported Website or user settings */}
+          {project.settings.customCss && (
+            <style dangerouslySetInnerHTML={{ __html: project.settings.customCss }} />
+          )}
+
+          {/* External Stylesheets */}
+          {project.settings.externalStylesheets?.map((sheetUrl) => (
+            <link key={sheetUrl} rel="stylesheet" href={sheetUrl} />
+          ))}
+
           {sections.filter((s) => !s.hidden).map((sec) => (
             <section
               key={sec.id}
               className="w-full relative overflow-hidden"
               style={{
                 backgroundColor: sec.styles.backgroundColor || 'transparent',
-                paddingTop: `${sec.styles.paddingTop ?? 60}px`,
-                paddingBottom: `${sec.styles.paddingBottom ?? 60}px`,
+                paddingTop: sec.rawHtml ? undefined : `${sec.styles.paddingTop ?? 60}px`,
+                paddingBottom: sec.rawHtml ? undefined : `${sec.styles.paddingBottom ?? 60}px`,
                 borderRadius: sec.styles.borderRadius,
               }}
             >
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                {sec.elements.map((el, elIdx) => {
+              {/* High Fidelity Raw HTML Mode */}
+              {sec.rawHtml ? (
+                <div
+                  dangerouslySetInnerHTML={{ __html: sec.rawHtml }}
+                  className="w-full overflow-hidden"
+                />
+              ) : (
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+                  {sec.elements.map((el, elIdx) => {
                   const { styles = {} } = el;
                   const textAlign = styles.textAlign || 'left';
                   const textColor = styles.textColor || 'inherit';
@@ -511,8 +528,9 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ isOpen, onClose, pro
                   return null;
                 })}
               </div>
-            </section>
-          ))}
+            )}
+          </section>
+        ))}
         </div>
       </div>
     </div>

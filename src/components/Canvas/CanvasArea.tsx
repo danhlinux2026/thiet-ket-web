@@ -7,6 +7,10 @@ import {
   Laptop,
   Tablet,
   Smartphone,
+  FolderOpen,
+  UploadCloud,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import {
   CanvasElement,
@@ -16,6 +20,7 @@ import {
   WebsiteTheme,
 } from '../../types';
 import { CanvasSectionWrapper } from './CanvasSectionWrapper';
+import { TEMPLATES_CATALOG } from '../../data/templates';
 
 interface CanvasAreaProps {
   project: WebsiteProject;
@@ -27,6 +32,8 @@ interface CanvasAreaProps {
   onSelectElement: (id: string | null) => void;
   onOpenTemplates: () => void;
   onOpenBlocks: () => void;
+  onOpenFileModal?: () => void;
+  onFileDropped?: (file: File) => void;
   onOpenImagePickerForElement?: (elementId: string) => void;
   onOpenIconPickerForElement?: (elementId: string) => void;
 }
@@ -41,10 +48,13 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   onSelectElement,
   onOpenTemplates,
   onOpenBlocks,
+  onOpenFileModal,
+  onFileDropped,
   onOpenImagePickerForElement,
   onOpenIconPickerForElement,
 }) => {
   const [isSectionDragOver, setIsSectionDragOver] = useState(false);
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
 
   // Viewport width mapping
   const viewportWidthClass =
@@ -57,6 +67,16 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
   const handleCanvasDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsSectionDragOver(false);
+    setIsFileDragOver(false);
+
+    // Check if external files dropped from desktop/explorer
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (onFileDropped) {
+        onFileDropped(e.dataTransfer.files[0]);
+        return;
+      }
+    }
+
     try {
       const dataStr = e.dataTransfer.getData('application/json');
       if (!dataStr) return;
@@ -111,6 +131,14 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
     setProject((prev) => ({ ...prev, sections: newSections }));
     onSelectSection(null);
     onSelectElement(null);
+  };
+
+  const handleUpdateSection = (index: number, updated: CanvasSection) => {
+    setProject((prev) => {
+      const newSections = [...prev.sections];
+      newSections[index] = updated;
+      return { ...prev, sections: newSections };
+    });
   };
 
   const handleUpdateElement = (sectionIndex: number, elementIndex: number, updated: CanvasElement) => {
@@ -208,16 +236,26 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
               Trang Web Chưa Có Nội Dung
             </h3>
             <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
-              Hãy chọn một mẫu giao diện hoàn chỉnh từ kho mẫu hoặc bắt đầu kéo thả các khối thành phần dựng sẵn vào đây.
+              Hãy mở file HTML / JSON có sẵn từ máy tính, chọn mẫu giao diện từ kho mẫu hoặc bắt đầu kéo thả các khối thành phần dựng sẵn vào đây.
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-3">
+              {onOpenFileModal && (
+                <button
+                  onClick={onOpenFileModal}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-lg shadow-blue-600/30 cursor-pointer"
+                >
+                  <FolderOpen className="w-4 h-4 text-blue-200" />
+                  <span>Mở File HTML / Dự Án Từ Máy</span>
+                </button>
+              )}
+
               <button
                 onClick={onOpenTemplates}
                 className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-lg shadow-indigo-600/30"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>Khám Phá Kho Giao Diện Mẫu</span>
+                <span>Khám Phá Kho Mẫu</span>
               </button>
 
               <button
@@ -225,13 +263,60 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                 className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl flex items-center gap-2 border border-slate-700 transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>Thêm Khối Đầu Tiên</span>
+                <span>Thêm Khối Trống</span>
               </button>
             </div>
           </div>
         ) : (
           /* Render Active Sections */
-          <div className="w-full flex-1 flex flex-col">
+          <div className="w-full flex-1 flex flex-col relative">
+            {/* External Stylesheets for Imported Sites (FontAwesome, Google Fonts, CDN CSS) */}
+            {project.settings.externalStylesheets?.map((sheet, i) => (
+              <link key={`ext-css-${i}`} rel="stylesheet" href={sheet} />
+            ))}
+
+            {/* Scoped Custom CSS for Imported Website Styles */}
+            {project.settings.customCss && (
+              <style dangerouslySetInnerHTML={{ __html: project.settings.customCss }} />
+            )}
+
+            {/* Helper Banner for GitHub Pixel-Perfect Source Sync */}
+            {(project.name.toLowerCase().includes('nha trang') ||
+              project.name.toLowerCase().includes('đà lạt') ||
+              project.name.toLowerCase().includes('xe')) &&
+              !project.sections.some((s) => s.mode === 'raw_html' || !!s.rawHtml) && (
+                <div className="bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-blue-950/90 border-b border-blue-500/30 p-3 text-white flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>
+                      <strong>Đồng bộ hiển thị GitHub:</strong> Bạn đang mở dự án xe Nha Trang – Đà Lạt phiên bản phân tách. Nhấn để chuyển ngay sang <strong>Bản Gốc 100% Chuẩn GitHub</strong> (bố cục 2 cột, form đặt xe trắng, bảng giá chuyên tuyến).
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const tpl = TEMPLATES_CATALOG.find((t) => t.id === 'xedalatnhatrang-car-rental');
+                      if (tpl) {
+                        setProject((prev) => ({
+                          ...prev,
+                          name: tpl.name,
+                          theme: tpl.theme,
+                          sections: JSON.parse(JSON.stringify(tpl.sections)),
+                          settings: {
+                            ...prev.settings,
+                            externalStylesheets: [
+                              'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
+                            ],
+                          },
+                        }));
+                      }
+                    }}
+                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition shadow flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Đồng Bộ Chuẩn Gốc Ngay
+                  </button>
+                </div>
+              )}
+
             {project.sections.map((section, idx) => (
               <CanvasSectionWrapper
                 key={section.id}
@@ -252,6 +337,7 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                 onMoveSection={(dir) => handleMoveSection(idx, dir)}
                 onDuplicateSection={() => handleDuplicateSection(idx)}
                 onDeleteSection={() => handleDeleteSection(idx)}
+                onUpdateSection={(updated) => handleUpdateSection(idx, updated)}
                 onUpdateElement={(elIdx, updated) => handleUpdateElement(idx, elIdx, updated)}
                 onDeleteElement={(elIdx) => handleDeleteElement(idx, elIdx)}
                 onDuplicateElement={(elIdx) => handleDuplicateElement(idx, elIdx)}

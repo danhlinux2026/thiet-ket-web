@@ -2,5 +2,7 @@
   "name": "WebStudio - Trình Tạo & Chỉnh Sửa Website Kéo Thả",
   "description": "Nền tảng thiết kế và chỉnh sửa website trực quan với công cụ kéo thả, chỉnh sửa trực tiếp trên trang, và kho mẫu giao diện phong phú.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

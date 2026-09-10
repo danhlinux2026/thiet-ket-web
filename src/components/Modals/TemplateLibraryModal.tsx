@@ -71,6 +71,7 @@ export const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const categories: Array<{ id: string; label: string; count?: number }> = [
     { id: 'all', label: 'Tất cả mẫu' },
     { id: 'my-templates', label: `Mẫu của tôi (${customTemplates.length})` },
+    { id: 'landing', label: 'Dịch vụ & Vận tải' },
     { id: 'saas', label: 'SaaS & Công nghệ' },
     { id: 'ecommerce', label: 'Thời trang & Shop' },
     { id: 'portfolio', label: 'Portfolio Cá nhân' },
@@ -117,6 +118,8 @@ export const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       education: 'Giáo Dục & Khóa Học',
       agency: 'Agency & Doanh Nghiệp',
       realestate: 'Bất Động Sản',
+      landing: 'Dịch Vụ & Vận Tải',
+      services: 'Dịch Vụ Chuyên Nghiệp',
     };
 
     const created = createTemplateFromProject(currentProject, {

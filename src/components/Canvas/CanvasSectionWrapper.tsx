@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ChevronUp,
   ChevronDown,
   Copy,
   Trash2,
   Plus,
-  Move,
-  Lock,
+  Code,
   Eye,
-  EyeOff,
-  Settings2,
+  Edit3,
+  Check,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
 import { CanvasElement, CanvasSection, WebsiteTheme } from '../../types';
 import { CanvasElementRenderer } from './CanvasElementRenderer';
@@ -26,6 +27,7 @@ interface CanvasSectionWrapperProps {
   onMoveSection: (direction: 'up' | 'down') => void;
   onDuplicateSection: () => void;
   onDeleteSection: () => void;
+  onUpdateSection?: (updated: CanvasSection) => void;
   onUpdateElement: (elementIndex: number, updated: CanvasElement) => void;
   onDeleteElement: (elementIndex: number) => void;
   onDuplicateElement: (elementIndex: number) => void;
@@ -46,6 +48,7 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
   onMoveSection,
   onDuplicateSection,
   onDeleteSection,
+  onUpdateSection,
   onUpdateElement,
   onDeleteElement,
   onDuplicateElement,
@@ -54,13 +57,20 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
   onOpenIconPickerForElement,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditingRawCode, setIsEditingRawCode] = useState(false);
+  const [rawCodeInput, setRawCodeInput] = useState(section.rawHtml || '');
+  const rawContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setRawCodeInput(section.rawHtml || '');
+  }, [section.rawHtml]);
 
   if (section.hidden) return null;
 
   const { styles = {} } = section;
   const bg = styles.backgroundColor || 'transparent';
-  const pt = styles.paddingTop ?? 60;
-  const pb = styles.paddingBottom ?? 60;
+  const pt = styles.paddingTop ?? (section.rawHtml ? 0 : 60);
+  const pb = styles.paddingBottom ?? (section.rawHtml ? 0 : 60);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -74,6 +84,28 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
       }
     } catch (err) {
       console.error('Failed to parse drag drop element', err);
+    }
+  };
+
+  const handleSaveRawCode = () => {
+    if (onUpdateSection) {
+      onUpdateSection({
+        ...section,
+        rawHtml: rawCodeInput,
+      });
+    }
+    setIsEditingRawCode(false);
+  };
+
+  const handleRawHtmlBlur = () => {
+    if (rawContainerRef.current && onUpdateSection) {
+      const updatedHtml = rawContainerRef.current.innerHTML;
+      if (updatedHtml !== section.rawHtml) {
+        onUpdateSection({
+          ...section,
+          rawHtml: updatedHtml,
+        });
+      }
     }
   };
 
@@ -111,9 +143,28 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-[10px] font-bold text-indigo-400 px-1.5 uppercase border-r border-slate-700">
-          {section.name || `Khối ${index + 1}`}
+        <span className="text-[10px] font-bold text-indigo-400 px-1.5 uppercase border-r border-slate-700 flex items-center gap-1">
+          {section.rawHtml ? (
+            <span className="text-amber-400 flex items-center gap-0.5">
+              <Sparkles className="w-2.5 h-2.5" /> Gốc
+            </span>
+          ) : null}
+          <span>{section.name || `Khối ${index + 1}`}</span>
         </span>
+
+        {/* Edit Raw HTML toggle if rawHtml present */}
+        {section.rawHtml && (
+          <button
+            onClick={() => setIsEditingRawCode(!isEditingRawCode)}
+            className={`p-1 rounded text-xs flex items-center gap-1 transition ${
+              isEditingRawCode ? 'bg-amber-500 text-slate-950 font-bold' : 'hover:bg-slate-800 text-amber-300'
+            }`}
+            title="Sửa mã nguồn HTML của khối này"
+          >
+            <Code className="w-3.5 h-3.5" />
+            <span className="text-[10px] hidden sm:inline">Sửa Mã</span>
+          </button>
+        )}
 
         {/* Move Up */}
         <button
@@ -154,36 +205,86 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
         </button>
       </div>
 
-      {/* Section Container Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-        {section.elements.length === 0 ? (
-          <div className="border border-dashed border-slate-700 rounded-xl p-8 text-center text-xs text-slate-500">
-            Khối này chưa có phần tử nào. Kéo thả phần tử từ thanh bên trái vào đây!
+      {/* Raw Code Editor Drawer (When toggled) */}
+      {isEditingRawCode && (
+        <div
+          className="p-4 bg-slate-900 border-b border-indigo-500/40 relative z-20 space-y-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <Code className="w-4 h-4" />
+              <span>Chỉnh sửa mã HTML trực tiếp cho khối này</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsEditingRawCode(false)}
+                className="px-2.5 py-1 text-xs text-slate-400 hover:text-white bg-slate-800 rounded-md transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveRawCode}
+                className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-md flex items-center gap-1 transition"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Lưu Thay Đổi</span>
+              </button>
+            </div>
           </div>
-        ) : (
-          section.elements.map((el, elIdx) => (
-            <CanvasElementRenderer
-              key={el.id || elIdx}
-              element={el}
-              theme={theme}
-              isSelected={selectedElementId === el.id}
-              onSelect={(e) => {
-                e.stopPropagation();
-                onSelectElement(el.id);
-              }}
-              onUpdateElement={(updated) => onUpdateElement(elIdx, updated)}
-              onDeleteElement={() => onDeleteElement(elIdx)}
-              onDuplicateElement={() => onDuplicateElement(elIdx)}
-              onOpenImagePicker={
-                onOpenImagePickerForElement ? () => onOpenImagePickerForElement(el.id) : undefined
-              }
-              onOpenIconPicker={
-                onOpenIconPickerForElement ? () => onOpenIconPickerForElement(el.id) : undefined
-              }
-            />
-          ))
-        )}
-      </div>
+          <textarea
+            value={rawCodeInput}
+            onChange={(e) => setRawCodeInput(e.target.value)}
+            rows={10}
+            className="w-full bg-slate-950 text-indigo-300 font-mono text-xs p-3 rounded-lg border border-slate-700 focus:border-indigo-500 focus:outline-none leading-relaxed"
+          />
+        </div>
+      )}
+
+      {/* Render Mode 1: High-Fidelity Pixel-Perfect Raw HTML */}
+      {section.rawHtml ? (
+        <div
+          ref={rawContainerRef}
+          contentEditable={isSelected}
+          suppressContentEditableWarning
+          onBlur={handleRawHtmlBlur}
+          dangerouslySetInnerHTML={{ __html: section.rawHtml }}
+          className={`w-full overflow-hidden ${
+            isSelected ? 'outline-none cursor-text' : ''
+          }`}
+        />
+      ) : (
+        /* Render Mode 2: Standard Visual Element Cards */
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          {section.elements.length === 0 ? (
+            <div className="border border-dashed border-slate-700 rounded-xl p-8 text-center text-xs text-slate-500">
+              Khối này chưa có phần tử nào. Kéo thả phần tử từ thanh bên trái vào đây!
+            </div>
+          ) : (
+            section.elements.map((el, elIdx) => (
+              <CanvasElementRenderer
+                key={el.id || elIdx}
+                element={el}
+                theme={theme}
+                isSelected={selectedElementId === el.id}
+                onSelect={(e) => {
+                  e.stopPropagation();
+                  onSelectElement(el.id);
+                }}
+                onUpdateElement={(updated) => onUpdateElement(elIdx, updated)}
+                onDeleteElement={() => onDeleteElement(elIdx)}
+                onDuplicateElement={() => onDuplicateElement(elIdx)}
+                onOpenImagePicker={
+                  onOpenImagePickerForElement ? () => onOpenImagePickerForElement(el.id) : undefined
+                }
+                onOpenIconPicker={
+                  onOpenIconPickerForElement ? () => onOpenIconPickerForElement(el.id) : undefined
+                }
+              />
+            ))
+          )}
+        </div>
+      )}
 
       {/* Drag Drop Hint on Hover */}
       {isDragOver && (

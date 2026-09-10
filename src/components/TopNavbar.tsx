@@ -31,6 +31,7 @@ interface TopNavbarProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onOpenFileModal: () => void;
   onOpenTemplates: () => void;
   onOpenVersions: () => void;
   onOpenSEO: () => void;
@@ -51,6 +52,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   canRedo,
   onUndo,
   onRedo,
+  onOpenFileModal,
   onOpenTemplates,
   onOpenVersions,
   onOpenSEO,
@@ -63,6 +65,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(project.name);
+  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
 
   const seoReport = useMemo(() => auditProjectSEO(project), [project]);
 
@@ -213,7 +216,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Mở & Thêm File Button (Manual File Opener) */}
+        <button
+          onClick={onOpenFileModal}
+          className="px-2.5 py-1.5 bg-gradient-to-r from-blue-900/60 to-indigo-900/60 hover:from-blue-800/80 hover:to-indigo-800/80 text-blue-200 hover:text-white border border-blue-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+          title="Mở hoặc Thêm file HTML, JSON dự án, mã CSS hoặc Ảnh từ máy tính (Ctrl+O)"
+        >
+          <FolderOpen className="w-3.5 h-3.5 text-blue-400" />
+          <span className="hidden sm:inline">Mở / Thêm File</span>
+          <span className="sm:hidden">File</span>
+        </button>
+
         {/* Google AI Studio Style Versions Button */}
         <button
           onClick={onOpenVersions}
@@ -243,18 +257,17 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           className="px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span className="hidden lg:inline">Kho Mẫu Giao Diện</span>
-          <span className="lg:hidden">Mẫu</span>
+          <span className="hidden lg:inline">Kho Mẫu</span>
         </button>
 
         {/* GitHub Direct Connection & File Picker Button */}
         <button
           onClick={onOpenGitHub}
-          className="px-3 py-1.5 bg-gradient-to-r from-indigo-900/60 to-slate-800 hover:from-indigo-800/80 hover:to-slate-700 text-indigo-200 hover:text-white border border-indigo-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+          className="px-2.5 py-1.5 bg-gradient-to-r from-indigo-900/60 to-slate-800 hover:from-indigo-800/80 hover:to-slate-700 text-indigo-200 hover:text-white border border-indigo-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
           title="Kết nối trực tiếp GitHub để chọn file ảnh, mã HTML, JSON và đẩy dự án"
         >
           <Github className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="hidden sm:inline">GitHub File</span>
+          <span className="hidden md:inline">GitHub</span>
         </button>
 
         {/* Theme Settings Button */}
@@ -264,7 +277,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           title="Tùy chỉnh Bảng màu & Font chữ"
         >
           <Palette className="w-3.5 h-3.5 text-pink-400" />
-          <span className="hidden xl:inline">Chủ Đề & Màu</span>
+          <span className="hidden xl:inline">Màu & Font</span>
         </button>
 
         {/* Code / Export Button */}
@@ -274,7 +287,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           title="Xuất mã nguồn HTML/Tailwind & JSON"
         >
           <Code2 className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="hidden xl:inline">Xuất Mã HTML</span>
+          <span className="hidden xl:inline">Xuất Mã</span>
         </button>
 
         {/* Preview Button */}
