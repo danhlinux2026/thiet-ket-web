@@ -125,6 +125,7 @@ export interface CanvasSection {
   locked?: boolean;
   hidden?: boolean;
   rawHtml?: string;
+  originalRawHtml?: string;
   mode?: 'visual' | 'raw_html';
   customClasses?: string;
   customCss?: string;

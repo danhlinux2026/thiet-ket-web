@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Monitor,
   Tablet,
   Smartphone,
   ExternalLink,
-  Sparkles,
-  Check,
-  Star,
-  ChevronDown,
+  RefreshCw,
 } from 'lucide-react';
 import { DeviceMode, WebsiteProject } from '../../types';
-import { getIconComponent } from '../../data/stockIcons';
+import { generateStandaloneHtml } from '../../utils/exportHtml';
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -21,19 +18,26 @@ interface PreviewModalProps {
 
 export const PreviewModal: React.FC<PreviewModalProps> = ({ isOpen, onClose, project }) => {
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
-  const [accordionState, setAccordionState] = useState<Record<string, boolean>>({ '0': true });
-  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const previewHtml = useMemo(() => {
+    return generateStandaloneHtml(project);
+  }, [project, refreshKey]);
 
   if (!isOpen) return null;
 
-  const { theme, sections } = project;
-
-  const viewportWidthClass =
-    deviceMode === 'desktop'
-      ? 'w-full max-w-full min-h-screen'
-    : deviceMode === 'tablet'
-      ? 'w-[768px] min-h-[90vh] shadow-2xl my-8 rounded-2xl border border-slate-700 overflow-hidden'
-      : 'w-[375px] min-h-[90vh] shadow-2xl my-8 rounded-3xl border border-slate-700 overflow-hidden';
+  const handleOpenInNewTab = () => {
+    try {
+      const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (!win) {
+        alert('Vui lòng mở quyền cho phép pop-up trên trình duyệt để mở trang trong tab mới.');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200">
@@ -44,494 +48,124 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ isOpen, onClose, pro
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Chế Độ Xem Trước Trực Quan</span>
           </span>
-          <span className="text-xs text-slate-500 hidden sm:inline">| {project.name}</span>
+          <span className="text-xs text-slate-400 hidden md:inline truncate max-w-xs">
+            | {project.name || 'Website của bạn'}
+          </span>
         </div>
 
         {/* Device Switcher */}
         <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5">
           <button
             onClick={() => setDeviceMode('desktop')}
-            className={`p-1.5 rounded text-xs flex items-center gap-1.5 transition ${
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition ${
               deviceMode === 'desktop'
-                ? 'bg-indigo-600 text-white font-semibold'
+                ? 'bg-indigo-600 text-white font-semibold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Monitor className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Desktop</span>
+            <span className="hidden sm:inline">Desktop</span>
           </button>
 
           <button
             onClick={() => setDeviceMode('tablet')}
-            className={`p-1.5 rounded text-xs flex items-center gap-1.5 transition ${
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition ${
               deviceMode === 'tablet'
-                ? 'bg-indigo-600 text-white font-semibold'
+                ? 'bg-indigo-600 text-white font-semibold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Tablet className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Tablet</span>
+            <span className="hidden sm:inline">Tablet</span>
           </button>
 
           <button
             onClick={() => setDeviceMode('mobile')}
-            className={`p-1.5 rounded text-xs flex items-center gap-1.5 transition ${
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition ${
               deviceMode === 'mobile'
-                ? 'bg-indigo-600 text-white font-semibold'
+                ? 'bg-indigo-600 text-white font-semibold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Smartphone className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Mobile</span>
+            <span className="hidden sm:inline">Mobile</span>
           </button>
         </div>
 
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition border border-slate-700"
-        >
-          <X className="w-4 h-4" />
-          <span>Đóng Xem Trước</span>
-        </button>
+        {/* Right Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs transition border border-slate-700"
+            title="Tải lại bản xem trước"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={handleOpenInNewTab}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700"
+            title="Mở toàn màn hình trong tab mới"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Mở Tab Mới</span>
+          </button>
+
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+          >
+            <X className="w-4 h-4" />
+            <span>Đóng</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Preview Container */}
-      <div className="flex-1 overflow-y-auto bg-slate-950 flex justify-center">
-        <div
-          className={`${viewportWidthClass} transition-all duration-300 flex flex-col`}
-          style={{
-            backgroundColor: theme.backgroundColor,
-            color: theme.textColor,
-            fontFamily: theme.fontBody,
-          }}
-        >
-          {/* Custom Injected CSS from imported Website or user settings */}
-          {project.settings.customCss && (
-            <style dangerouslySetInnerHTML={{ __html: project.settings.customCss }} />
-          )}
-
-          {/* External Stylesheets */}
-          {project.settings.externalStylesheets?.map((sheetUrl) => (
-            <link key={sheetUrl} rel="stylesheet" href={sheetUrl} />
-          ))}
-
-          {sections.filter((s) => !s.hidden).map((sec) => (
-            <section
-              key={sec.id}
-              className="w-full relative overflow-hidden"
-              style={{
-                backgroundColor: sec.styles.backgroundColor || 'transparent',
-                paddingTop: sec.rawHtml ? undefined : `${sec.styles.paddingTop ?? 60}px`,
-                paddingBottom: sec.rawHtml ? undefined : `${sec.styles.paddingBottom ?? 60}px`,
-                borderRadius: sec.styles.borderRadius,
-              }}
-            >
-              {/* High Fidelity Raw HTML Mode */}
-              {sec.rawHtml ? (
-                <div
-                  dangerouslySetInnerHTML={{ __html: sec.rawHtml }}
-                  className="w-full overflow-hidden"
-                />
-              ) : (
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-                  {sec.elements.map((el, elIdx) => {
-                  const { styles = {} } = el;
-                  const textAlign = styles.textAlign || 'left';
-                  const textColor = styles.textColor || 'inherit';
-
-                  if (el.type === 'heading') {
-                    const Tag = el.tag || 'h2';
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        dangerouslySetInnerHTML={{ __html: el.content || '' }}
-                        className={`font-extrabold tracking-tight ${
-                          styles.fontSize === '5xl'
-                            ? 'text-4xl md:text-5xl lg:text-6xl'
-                            : styles.fontSize === '4xl'
-                            ? 'text-3xl md:text-4xl lg:text-5xl'
-                            : styles.fontSize === '3xl'
-                            ? 'text-2xl md:text-3xl lg:text-4xl'
-                            : styles.fontSize === 'xl'
-                            ? 'text-xl md:text-2xl'
-                            : 'text-2xl md:text-3xl'
-                        }`}
-                        style={{
-                          color: textColor,
-                          textAlign,
-                          fontFamily: theme.fontHeading,
-                          marginBottom: styles.marginBottom ? `${styles.marginBottom}px` : undefined,
-                        }}
-                      />
-                    );
-                  }
-
-                  if (el.type === 'paragraph') {
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        dangerouslySetInnerHTML={{ __html: el.content || '' }}
-                        className={`leading-relaxed ${
-                          styles.fontSize === 'lg' ? 'text-lg md:text-xl' : 'text-base'
-                        }`}
-                        style={{
-                          color: textColor,
-                          textAlign,
-                          fontFamily: theme.fontBody,
-                          marginBottom: styles.marginBottom ? `${styles.marginBottom}px` : undefined,
-                        }}
-                      />
-                    );
-                  }
-
-                  if (el.type === 'badge') {
-                    return (
-                      <div key={el.id || elIdx} style={{ textAlign }}>
-                        <span
-                          className="inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm"
-                          style={{
-                            backgroundColor: styles.backgroundColor || '#1e1b4b',
-                            color: styles.textColor || '#818cf8',
-                            borderRadius: theme.radius,
-                          }}
-                        >
-                          {el.badgeText}
-                        </span>
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'button') {
-                    return (
-                      <div key={el.id || elIdx} style={{ textAlign }}>
-                        <a
-                          href={el.href || '#'}
-                          onClick={(e) => {
-                            if (!el.href || el.href === '#') {
-                              e.preventDefault();
-                              alert(`Bạn đã nhấp vào nút: "${el.content}"`);
-                            }
-                          }}
-                          className="inline-flex items-center justify-center font-bold transition shadow-md hover:opacity-90 active:scale-95"
-                          style={{
-                            backgroundColor: styles.backgroundColor || theme.primaryColor,
-                            color: styles.textColor || '#ffffff',
-                            paddingTop: `${styles.paddingTop || 12}px`,
-                            paddingBottom: `${styles.paddingBottom || 12}px`,
-                            paddingLeft: `${styles.paddingRight || 28}px`,
-                            paddingRight: `${styles.paddingRight || 28}px`,
-                            borderRadius: styles.borderRadius || theme.radius || '0.5rem',
-                          }}
-                        >
-                          {el.content}
-                        </a>
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'image') {
-                    return (
-                      <div key={el.id || elIdx} className="w-full flex justify-center">
-                        <img
-                          src={el.src}
-                          alt={el.alt || 'Ảnh'}
-                          className="w-full max-w-5xl object-cover rounded-xl shadow-xl"
-                          style={{ borderRadius: theme.radius }}
-                        />
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'card') {
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        className={`grid gap-6 ${
-                          styles.columns === 2
-                            ? 'grid-cols-1 md:grid-cols-2'
-                            : styles.columns === 4
-                            ? 'grid-cols-1 md:grid-cols-4'
-                            : 'grid-cols-1 md:grid-cols-3'
-                        }`}
-                      >
-                        {(el.items || []).map((item, idx) => {
-                          const IconComponent = getIconComponent(item.icon);
-                          return (
-                            <div
-                              key={idx}
-                              className="p-6 rounded-2xl border border-slate-800 bg-slate-800/40 shadow-lg flex flex-col justify-between"
-                              style={{
-                                backgroundColor: theme.cardBackground,
-                                borderRadius: theme.radius,
-                              }}
-                            >
-                              <div>
-                                {item.image && (
-                                  <div className="relative mb-4 overflow-hidden rounded-xl h-44">
-                                    <img
-                                      src={item.image}
-                                      alt={item.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                )}
-                                {!item.image && (
-                                  <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
-                                    <IconComponent className="w-5 h-5" />
-                                  </div>
-                                )}
-                                <h4 className="text-lg font-bold text-white mb-2">{item.title}</h4>
-                                {item.subtitle && (
-                                  <p className="text-xs font-semibold text-indigo-400 mb-2">
-                                    {item.subtitle}
-                                  </p>
-                                )}
-                                {item.description && (
-                                  <p className="text-sm text-slate-300 leading-relaxed">
-                                    {item.description}
-                                  </p>
-                                )}
-                              </div>
-                              {item.price && (
-                                <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between">
-                                  <span className="text-lg font-bold text-emerald-400">
-                                    {item.price}
-                                  </span>
-                                  {item.buttonText && (
-                                    <button
-                                      onClick={() => alert(`Đã thêm "${item.title}" vào giỏ hàng!`)}
-                                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition"
-                                    >
-                                      {item.buttonText}
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'pricing-card') {
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6"
-                      >
-                        {(el.items || []).map((item, idx) => (
-                          <div
-                            key={idx}
-                            className={`p-8 rounded-2xl border transition flex flex-col justify-between relative shadow-xl ${
-                              item.popular
-                                ? 'border-indigo-500 ring-2 ring-indigo-500 bg-slate-800/90'
-                                : 'border-slate-800 bg-slate-800/40'
-                            }`}
-                            style={{ borderRadius: theme.radius }}
-                          >
-                            {item.popular && (
-                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider py-0.5 px-3 rounded-full shadow">
-                                Phổ Biến Nhất
-                              </div>
-                            )}
-
-                            <div>
-                              <h3 className="text-xl font-bold text-white">{item.title}</h3>
-                              <p className="text-xs text-slate-400 mt-1.5">{item.description}</p>
-                              <div className="my-5 flex items-baseline gap-1">
-                                <span className="text-3xl font-extrabold text-white">
-                                  {item.price}
-                                </span>
-                                <span className="text-xs text-slate-400">{item.period}</span>
-                              </div>
-                              <ul className="space-y-2.5 mb-6 text-xs text-slate-300">
-                                {(item.features || []).map((feat, fIdx) => (
-                                  <li key={fIdx} className="flex items-center gap-2">
-                                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                    <span>{feat}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            <button
-                              onClick={() => alert(`Bạn đã chọn ${item.title}!`)}
-                              className={`w-full py-2.5 rounded-xl font-bold text-xs transition ${
-                                item.popular
-                                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg'
-                                  : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
-                              }`}
-                            >
-                              {item.buttonText || 'Chọn Gói'}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'testimonial-card') {
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6"
-                      >
-                        {(el.items || []).map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="p-6 rounded-2xl border border-slate-800 bg-slate-800/40 shadow-lg flex flex-col justify-between"
-                            style={{ borderRadius: theme.radius }}
-                          >
-                            <div>
-                              <div className="flex items-center gap-1 text-amber-400 mb-3">
-                                {[...Array(item.rating || 5)].map((_, r) => (
-                                  <Star
-                                    key={r}
-                                    className="w-3.5 h-3.5 fill-amber-400 text-amber-400"
-                                  />
-                                ))}
-                              </div>
-                              <h4 className="text-base font-bold text-white mb-2">
-                                "{item.title}"
-                              </h4>
-                              <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                                {item.description}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-3 pt-4 border-t border-slate-700/60">
-                              {item.avatar && (
-                                <img
-                                  src={item.avatar}
-                                  alt={item.author}
-                                  className="w-9 h-9 rounded-full object-cover border border-slate-600 shrink-0"
-                                />
-                              )}
-                              <div>
-                                <p className="text-xs font-bold text-white">{item.author}</p>
-                                <p className="text-[10px] text-slate-400">{item.role}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'stats-item') {
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center my-4"
-                      >
-                        {(el.items || []).map((item, idx) => (
-                          <div key={idx} className="p-3">
-                            <div className="text-3xl md:text-4xl font-extrabold text-indigo-400">
-                              {item.statNumber}
-                            </div>
-                            <div className="text-xs text-slate-400 mt-1">{item.statLabel}</div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'accordion') {
-                    return (
-                      <div key={el.id || elIdx} className="space-y-3 max-w-3xl mx-auto my-6">
-                        {(el.items || []).map((item, idx) => {
-                          const isOpen = Boolean(accordionState[`${el.id}-${idx}`]);
-                          return (
-                            <div
-                              key={idx}
-                              className="border border-slate-800 rounded-xl overflow-hidden bg-slate-800/40"
-                            >
-                              <button
-                                onClick={() =>
-                                  setAccordionState((prev) => ({
-                                    ...prev,
-                                    [`${el.id}-${idx}`]: !prev[`${el.id}-${idx}`],
-                                  }))
-                                }
-                                className="w-full px-5 py-3.5 text-left flex items-center justify-between font-bold text-xs sm:text-sm text-white hover:bg-slate-800/80 transition cursor-pointer select-none"
-                              >
-                                <span>{item.title}</span>
-                                <ChevronDown
-                                  className={`w-4 h-4 text-slate-400 transition-transform ${
-                                    isOpen ? 'rotate-180 text-indigo-400' : ''
-                                  }`}
-                                />
-                              </button>
-                              {isOpen && (
-                                <div className="px-5 py-3 text-slate-300 text-xs leading-relaxed bg-slate-900/50 border-t border-slate-800">
-                                  {item.description || item.answer}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-
-                  if (el.type === 'form-input') {
-                    return (
-                      <form
-                        key={el.id || elIdx}
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          setFormSubmitted(true);
-                          setTimeout(() => setFormSubmitted(false), 4000);
-                        }}
-                        className="max-w-2xl mx-auto space-y-3.5 p-6 rounded-2xl border border-slate-800 bg-slate-800/40 shadow-xl my-6"
-                      >
-                        {formSubmitted && (
-                          <div className="p-3 bg-emerald-950 border border-emerald-700 text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-2">
-                            <Check className="w-4 h-4" />
-                            <span>Thông tin đã được gửi thành công! Cảm ơn bạn.</span>
-                          </div>
-                        )}
-                        {(el.items || []).map((item, idx) => (
-                          <div key={idx}>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">
-                              {item.title}
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              placeholder={item.placeholder}
-                              className="w-full px-3.5 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                            />
-                          </div>
-                        ))}
-                        <button
-                          type="submit"
-                          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition shadow-md mt-2 cursor-pointer"
-                        >
-                          {el.content || 'Gửi Thông Tin Ngay'}
-                        </button>
-                      </form>
-                    );
-                  }
-
-                  if (el.type === 'divider') {
-                    return (
-                      <div
-                        key={el.id || elIdx}
-                        className="w-full border-t border-slate-800 my-4"
-                      />
-                    );
-                  }
-
-                  return null;
-                })}
-              </div>
-            )}
-          </section>
-        ))}
-        </div>
+      <div className="flex-1 overflow-auto bg-slate-950 flex justify-center items-center p-0 md:p-4">
+        {deviceMode === 'desktop' ? (
+          <div className="w-full h-full bg-white shadow-2xl overflow-hidden flex flex-col">
+            <iframe
+              key={`preview-desktop-${refreshKey}`}
+              title="Desktop Preview"
+              srcDoc={previewHtml}
+              className="w-full h-full border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          </div>
+        ) : deviceMode === 'tablet' ? (
+          <div className="w-[768px] h-[92vh] max-h-[1024px] bg-white rounded-2xl shadow-2xl overflow-hidden border-8 border-slate-800 flex flex-col my-auto transition-all">
+            {/* Mock Tablet Top Bar */}
+            <div className="h-4 bg-slate-800 flex items-center justify-center shrink-0">
+              <div className="w-12 h-1 bg-slate-600 rounded-full" />
+            </div>
+            <iframe
+              key={`preview-tablet-${refreshKey}`}
+              title="Tablet Preview"
+              srcDoc={previewHtml}
+              className="w-full flex-1 border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          </div>
+        ) : (
+          <div className="w-[375px] h-[88vh] max-h-[812px] bg-white rounded-[36px] shadow-2xl overflow-hidden border-[10px] border-slate-800 flex flex-col my-auto transition-all">
+            {/* Mock Mobile Notch */}
+            <div className="h-6 bg-slate-800 flex items-center justify-center shrink-0">
+              <div className="w-20 h-3 bg-slate-950 rounded-b-xl" />
+            </div>
+            <iframe
+              key={`preview-mobile-${refreshKey}`}
+              title="Mobile Preview"
+              srcDoc={previewHtml}
+              className="w-full flex-1 border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+            {/* Home Indicator */}
+            <div className="h-4 bg-white flex items-center justify-center shrink-0">
+              <div className="w-24 h-1 bg-slate-300 rounded-full" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

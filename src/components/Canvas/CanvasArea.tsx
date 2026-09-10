@@ -11,6 +11,7 @@ import {
   UploadCloud,
   Check,
   ExternalLink,
+  RotateCcw,
 } from 'lucide-react';
 import {
   CanvasElement,
@@ -283,13 +284,12 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
             {/* Helper Banner for GitHub Pixel-Perfect Source Sync */}
             {(project.name.toLowerCase().includes('nha trang') ||
               project.name.toLowerCase().includes('đà lạt') ||
-              project.name.toLowerCase().includes('xe')) &&
-              !project.sections.some((s) => s.mode === 'raw_html' || !!s.rawHtml) && (
-                <div className="bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-blue-950/90 border-b border-blue-500/30 p-3 text-white flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+              project.name.toLowerCase().includes('xe')) && (
+                <div className="bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-blue-950/90 border-b border-blue-500/30 p-2.5 px-4 text-white flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                     <span>
-                      <strong>Đồng bộ hiển thị GitHub:</strong> Bạn đang mở dự án xe Nha Trang – Đà Lạt phiên bản phân tách. Nhấn để chuyển ngay sang <strong>Bản Gốc 100% Chuẩn GitHub</strong> (bố cục 2 cột, form đặt xe trắng, bảng giá chuyên tuyến).
+                      <strong>Mẫu Thuê Xe Nha Trang – Đà Lạt:</strong> Bố cục chuẩn 100% bản gốc GitHub (Form đặt xe nhanh màu trắng, hotline 0911 099 712, bảng giá xe 4-7-16 chỗ).
                     </span>
                   </div>
                   <button
@@ -303,16 +303,19 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                           sections: JSON.parse(JSON.stringify(tpl.sections)),
                           settings: {
                             ...prev.settings,
+                            bodyClasses: 'bg-gray-100 font-sans text-gray-900',
                             externalStylesheets: [
                               'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
+                              'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
                             ],
                           },
                         }));
                       }
                     }}
-                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition shadow flex items-center gap-1.5 cursor-pointer shrink-0"
+                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition shadow flex items-center gap-1.5 cursor-pointer shrink-0 text-xs"
+                    title="Khôi phục lại giao diện mẫu gốc hoàn chỉnh nếu bạn chỉnh sửa bị lỗi"
                   >
-                    <Check className="w-3.5 h-3.5" /> Đồng Bộ Chuẩn Gốc Ngay
+                    <RotateCcw className="w-3.5 h-3.5" /> Khôi Phục Bản Gốc 100%
                   </button>
                 </div>
               )}

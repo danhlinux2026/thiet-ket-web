@@ -11,6 +11,7 @@ import {
   Check,
   Sparkles,
   Layers,
+  RotateCcw,
 } from 'lucide-react';
 import { CanvasElement, CanvasSection, WebsiteTheme } from '../../types';
 import { CanvasElementRenderer } from './CanvasElementRenderer';
@@ -97,15 +98,17 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
     setIsEditingRawCode(false);
   };
 
-  const handleRawHtmlBlur = () => {
-    if (rawContainerRef.current && onUpdateSection) {
-      const updatedHtml = rawContainerRef.current.innerHTML;
-      if (updatedHtml !== section.rawHtml) {
-        onUpdateSection({
-          ...section,
-          rawHtml: updatedHtml,
-        });
-      }
+  const handleRestoreOriginalHtml = () => {
+    if (section.originalRawHtml && onUpdateSection) {
+      onUpdateSection({
+        ...section,
+        rawHtml: section.originalRawHtml,
+        styles: {
+          ...section.styles,
+          backgroundColor: 'transparent',
+        },
+      });
+      setRawCodeInput(section.originalRawHtml);
     }
   };
 
@@ -163,6 +166,18 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
           >
             <Code className="w-3.5 h-3.5" />
             <span className="text-[10px] hidden sm:inline">Sửa Mã</span>
+          </button>
+        )}
+
+        {/* Restore Original HTML if available */}
+        {section.rawHtml && section.originalRawHtml && (
+          <button
+            onClick={handleRestoreOriginalHtml}
+            className="p-1 rounded text-xs flex items-center gap-1 transition hover:bg-slate-800 text-cyan-300"
+            title="Khôi phục lại mã HTML gốc ban đầu"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="text-[10px] hidden sm:inline">Gốc</span>
           </button>
         )}
 
@@ -245,12 +260,9 @@ export const CanvasSectionWrapper: React.FC<CanvasSectionWrapperProps> = ({
       {section.rawHtml ? (
         <div
           ref={rawContainerRef}
-          contentEditable={isSelected}
-          suppressContentEditableWarning
-          onBlur={handleRawHtmlBlur}
           dangerouslySetInnerHTML={{ __html: section.rawHtml }}
-          className={`w-full overflow-hidden ${
-            isSelected ? 'outline-none cursor-text' : ''
+          className={`w-full overflow-hidden transition-all ${
+            isSelected ? 'outline-none cursor-pointer' : ''
           }`}
         />
       ) : (

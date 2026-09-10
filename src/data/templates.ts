@@ -1120,3 +1120,13 @@ export const TEMPLATES_CATALOG: TemplateDefinition[] = [
     ],
   },
 ];
+
+// Ensure originalRawHtml is preserved for raw_html sections
+TEMPLATES_CATALOG.forEach((tpl) => {
+  tpl.sections.forEach((sec) => {
+    if (sec.rawHtml && !sec.originalRawHtml) {
+      sec.originalRawHtml = sec.rawHtml;
+    }
+  });
+});
+

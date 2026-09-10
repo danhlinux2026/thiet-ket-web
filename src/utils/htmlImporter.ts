@@ -360,6 +360,7 @@ export const parseHtmlToWebStudioSections = (
       layout: 'full-width',
       mode: 'raw_html',
       rawHtml: rawSectionHtml,
+      originalRawHtml: rawSectionHtml,
       customClasses: node.getAttribute('class') || '',
       backgroundImage: styleBgImage,
       styles: {
@@ -381,6 +382,7 @@ export const parseHtmlToWebStudioSections = (
       layout: 'full-width',
       mode: 'raw_html',
       rawHtml: body.innerHTML,
+      originalRawHtml: body.innerHTML,
       styles: {
         backgroundColor: 'transparent',
         paddingTop: 0,

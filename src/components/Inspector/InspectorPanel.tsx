@@ -26,6 +26,8 @@ import {
   Layers,
   Settings2,
   Cpu,
+  Code,
+  RotateCcw,
 } from 'lucide-react';
 import {
   CanvasElement,
@@ -797,19 +799,30 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
                   {/* Background Color */}
                   <div>
-                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">
-                      Màu Nền Khối:
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] text-slate-400 font-semibold">
+                        Màu Nền Khối:
+                      </label>
+                      {targetStyles.backgroundColor && targetStyles.backgroundColor !== 'transparent' && (
+                        <button
+                          type="button"
+                          onClick={() => updateSectionStyles({ backgroundColor: 'transparent' })}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 underline font-medium"
+                        >
+                          Xóa Nền (Trong Suốt)
+                        </button>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
                       <input
                         type="color"
-                        value={targetStyles.backgroundColor || '#0f172a'}
+                        value={targetStyles.backgroundColor && targetStyles.backgroundColor !== 'transparent' ? targetStyles.backgroundColor : '#ffffff'}
                         onChange={(e) => updateSectionStyles({ backgroundColor: e.target.value })}
                         className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
                       />
                       <input
                         type="text"
-                        value={targetStyles.backgroundColor || '#0f172a'}
+                        value={targetStyles.backgroundColor || 'transparent'}
                         onChange={(e) => updateSectionStyles({ backgroundColor: e.target.value })}
                         className="flex-1 bg-transparent text-slate-200 font-mono text-xs focus:outline-none uppercase"
                       />
@@ -820,32 +833,90 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-[11px] text-slate-400 font-semibold">
                       <span>Khoảng cách trên (Padding Top):</span>
-                      <span className="font-mono text-indigo-400">{targetStyles.paddingTop ?? 60}px</span>
+                      <span className="font-mono text-indigo-400">
+                        {targetStyles.paddingTop ?? (currentSection.rawHtml ? 0 : 60)}px
+                      </span>
                     </div>
                     <input
                       type="range"
                       min="0"
                       max="160"
                       step="4"
-                      value={targetStyles.paddingTop ?? 60}
+                      value={targetStyles.paddingTop ?? (currentSection.rawHtml ? 0 : 60)}
                       onChange={(e) => updateSectionStyles({ paddingTop: Number(e.target.value) })}
                       className="w-full accent-indigo-500 cursor-pointer"
                     />
 
                     <div className="flex justify-between items-center text-[11px] text-slate-400 font-semibold pt-2">
                       <span>Khoảng cách dưới (Padding Bottom):</span>
-                      <span className="font-mono text-indigo-400">{targetStyles.paddingBottom ?? 60}px</span>
+                      <span className="font-mono text-indigo-400">
+                        {targetStyles.paddingBottom ?? (currentSection.rawHtml ? 0 : 60)}px
+                      </span>
                     </div>
                     <input
                       type="range"
                       min="0"
                       max="160"
                       step="4"
-                      value={targetStyles.paddingBottom ?? 60}
+                      value={targetStyles.paddingBottom ?? (currentSection.rawHtml ? 0 : 60)}
                       onChange={(e) => updateSectionStyles({ paddingBottom: Number(e.target.value) })}
                       className="w-full accent-indigo-500 cursor-pointer"
                     />
                   </div>
+
+                  {/* Direct Raw HTML Editor if section has rawHtml */}
+                  {currentSection.rawHtml && (
+                    <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-2.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                          <Code className="w-3.5 h-3.5" />
+                          <span>Mã Nguồn Khối (HTML)</span>
+                        </span>
+                        {currentSection.originalRawHtml && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProject((prev) => ({
+                                ...prev,
+                                sections: prev.sections.map((s) =>
+                                  s.id === currentSection.id
+                                    ? {
+                                        ...s,
+                                        rawHtml: currentSection.originalRawHtml,
+                                        styles: { ...s.styles, backgroundColor: 'transparent' },
+                                      }
+                                    : s
+                                ),
+                              }));
+                            }}
+                            className="text-[10px] text-cyan-400 hover:text-cyan-300 underline font-semibold flex items-center gap-1"
+                            title="Khôi phục lại HTML ban đầu"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>Khôi Phục Gốc</span>
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        Chỉnh sửa trực tiếp HTML của khối này. Khi bạn sửa xong, bản xem trước và file tải về sẽ cập nhật tức thì:
+                      </p>
+                      <textarea
+                        rows={9}
+                        value={currentSection.rawHtml}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProject((prev) => ({
+                            ...prev,
+                            sections: prev.sections.map((s) =>
+                              s.id === currentSection.id ? { ...s, rawHtml: val } : s
+                            ),
+                          }));
+                        }}
+                        className="w-full p-2 bg-slate-950 text-indigo-300 font-mono text-[11px] rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500 leading-relaxed"
+                        placeholder="Mã HTML..."
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -98,8 +98,8 @@ ${schemaJson}
   <style>
     body {
       font-family: '${theme.fontBody}', sans-serif;
-      background-color: ${theme.backgroundColor};
-      color: ${theme.textColor};
+      ${theme.backgroundColor && !settings.bodyClasses?.includes('bg-') ? `background-color: ${theme.backgroundColor};` : ''}
+      color: ${theme.textColor || 'inherit'};
     }
     h1, h2, h3, h4, h5, h6 {
       font-family: '${theme.fontHeading}', sans-serif;
@@ -107,7 +107,7 @@ ${schemaJson}
     ${settings.customCss || ''}
   </style>
 </head>
-<body class="antialiased selection:bg-indigo-500 selection:text-white">
+<body class="antialiased selection:bg-indigo-500 selection:text-white ${settings.bodyClasses || ''}">
 
 ${sectionsHtml}
 
